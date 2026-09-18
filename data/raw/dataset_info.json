@@ -1,0 +1,21 @@
+{
+  "source": "https://www.kaggle.com/datasets/mostafaabla/garbage-classification",
+  "download_date": "2026-09-18",
+  "archive_sha256": "bf0255312ae3c7db71f38af7faf51b720a9279391c69c2d185b442012b93544d",
+  "image_count": 15515,
+  "class_counts": {
+    "battery": 945,
+    "biological": 985,
+    "brown-glass": 607,
+    "cardboard": 891,
+    "clothes": 5325,
+    "green-glass": 629,
+    "metal": 769,
+    "paper": 1050,
+    "plastic": 865,
+    "shoes": 1977,
+    "trash": 697,
+    "white-glass": 775
+  },
+  "readability_errors": []
+}

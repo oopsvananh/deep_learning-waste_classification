@@ -1,2 +1,21 @@
-dataset-resized.zip
-trashnet/__MACOSX/
+# Raw archive and extraction metadata
+/data/raw/*.zip
+/data/raw/download-*.tmp
+/data/raw/download-*.part
+**/__MACOSX/
+
+# Python and notebooks
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+
+# Generated datasets (keep folder structure)
+/data/processed/*
+!/data/processed/.gitkeep
+/data/train/*
+!/data/train/.gitkeep
+/data/val/*
+!/data/val/.gitkeep
+/data/test/*
+!/data/test/.gitkeep
