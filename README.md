@@ -13,7 +13,8 @@ deep_learning-waste_classification/
 │   ├── val/                         # Tập validation
 │   └── test/                        # Tập kiểm thử cuối cùng
 ├── preprocess/
-│   └── TrashNet_EDA.ipynb           # EDA cũ, cần chuyển đổi trước khi dùng dataset mới
+│   ├── Garbage_Classification_EDA.ipynb # EDA cho dataset 12 lớp hiện tại
+│   └── eda_outputs/garbage_classification/ # Bảng CSV, biểu đồ và tổng kết EDA
 ├── train/                           # Code huấn luyện dùng chung
 ├── val/                             # Code validation, chọn cấu hình/checkpoint
 ├── test/                            # Code đánh giá cuối cùng
@@ -26,7 +27,10 @@ deep_learning-waste_classification/
 ## Cách sử dụng
 
 - Dữ liệu mới nằm trong `data/raw/garbage_classification/`, mỗi thư mục con là một nhãn. Ảnh đã giải nén được lưu trong Git; file ZIP được bỏ qua.
-- `preprocess/TrashNet_EDA.ipynb` được giữ lại làm tài liệu EDA cũ. Notebook này vẫn dùng đường dẫn, 6 nhãn và kết quả của TrashNet; cần cập nhật trước khi chạy với dataset mới.
+- Mở `preprocess/Garbage_Classification_EDA.ipynb`, chọn Python kernel và **Run All**. Thư viện cần có: `numpy`, `pandas`, `matplotlib`, `Pillow`, `scipy`, `IPython`. Notebook tự tìm dataset từ workspace, repo hoặc thư mục `preprocess`; có thể đặt `DATA_DIR` thủ công.
+- EDA kiểm kê ảnh, đối chiếu metadata lúc tải, phân tích mất cân bằng lớp, ảnh mẫu, kích thước/định dạng, độ sáng/tương phản/chi tiết và ảnh trùng/gần trùng. Kết quả chạy được lưu trong notebook và `preprocess/eda_outputs/garbage_classification/`.
+- `garbage_duplicate_groups_for_review.csv` liệt kê toàn bộ ảnh thuộc nhóm trùng/gần trùng; `all_image_groups.csv` bao gồm cả ảnh đơn lẻ để chuẩn bị chia tập. Nhóm pHash là ứng viên cần xem lại, không phải kết luận nhãn sai. Dùng `REVIEW_START` và `REVIEW_LIMIT` trong notebook để xem từng trang nhóm ảnh; đặt `REVIEW_LIMIT = None` để xem tất cả.
+- Notebook EDA chỉ đọc ảnh gốc, không xóa/sửa nhãn hoặc chia dữ liệu. Notebook `TrashNet_EDA.ipynb` cũ tại máy được giữ nguyên để tham khảo, không dùng cho dataset hiện tại.
 - Thêm bước làm sạch và chia dữ liệu trong `preprocess/`. Lưu dữ liệu đã xử lý vào `data/processed/`, các tập chia vào `data/train/`, `data/val/`, `data/test/`, mỗi tập chứa các thư mục class.
 - Dùng cùng một cách chia dữ liệu cho cả 3 mô hình để so sánh kết quả. Chỉ áp dụng augmentation cho tập train; dùng validation để chọn mô hình và test để đánh giá cuối cùng.
 - Thay tên `model_1`, `model_2`, `model_3` khi chọn kiến trúc cụ thể; đặt phần định nghĩa và cấu hình riêng của từng mô hình trong thư mục tương ứng.
