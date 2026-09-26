@@ -10,6 +10,9 @@ __pycache__/
 .ipynb_checkpoints/
 .venv/
 
+# Local training outputs and checkpoints
+/artifacts/
+
 # Generated datasets (keep folder structure)
 /data/processed/*
 !/data/processed/.gitkeep
