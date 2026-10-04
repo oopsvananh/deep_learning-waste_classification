@@ -13,7 +13,10 @@ deep_learning-waste_classification/
 │   ├── val/                         # Tập validation
 │   └── test/                        # Tập kiểm thử cuối cùng
 ├── preprocess/
-│   └── Garbage_Classification_EDA.ipynb # EDA cho dataset 12 lớp hiện tại
+│   ├── EDA.ipynb                  # Khám phá dataset 12 lớp
+│   ├── Preprocessing.ipynb        # Chạy và minh họa tiền xử lý
+│   ├── preprocessing.py           # Chia dữ liệu và tạo PyTorch DataLoader
+│   └── show_batch.ipynb           # Xem một batch sau tiền xử lý
 ├── train/                           # Code huấn luyện dùng chung
 ├── val/                             # Code validation, chọn cấu hình/checkpoint
 ├── test/                            # Code đánh giá cuối cùng
@@ -26,66 +29,113 @@ deep_learning-waste_classification/
 ## Cách sử dụng
 
 - Dữ liệu mới nằm trong `data/raw/garbage_classification/`, mỗi thư mục con là một nhãn. Ảnh đã giải nén được lưu trong Git; file ZIP được bỏ qua.
-- Mở `preprocess/Garbage_Classification_EDA.ipynb`, chọn Python kernel và **Run All**. Thư viện cần có: `numpy`, `pandas`, `matplotlib`, `Pillow`, `scipy`, `IPython`. Notebook tự tìm dataset từ workspace, repo hoặc thư mục `preprocess`; có thể đặt `DATA_DIR` thủ công.
+- Mở `preprocess/EDA.ipynb`, chọn Python kernel và **Run All**. Notebook tự tìm dataset từ workspace hoặc repository.
 - EDA kiểm kê ảnh, đối chiếu metadata lúc tải, phân tích mất cân bằng lớp, ảnh mẫu, kích thước/định dạng, độ sáng/tương phản/chi tiết và ảnh trùng/gần trùng. Kết quả chỉ hiển thị trực tiếp trong notebook, không xuất file riêng.
 - Xem nhóm ảnh trùng/gần trùng trực tiếp bằng `REVIEW_START` và `REVIEW_LIMIT`; đặt `REVIEW_LIMIT = None` để xem tất cả. Nhóm pHash cần được kiểm tra thủ công.
-- Notebook EDA chỉ đọc ảnh gốc, không xóa/sửa nhãn hoặc chia dữ liệu. Notebook `TrashNet_EDA.ipynb` cũ tại máy được giữ nguyên để tham khảo, không dùng cho dataset hiện tại.
-- Thêm bước làm sạch và chia dữ liệu trong `preprocess/`. Lưu dữ liệu đã xử lý vào `data/processed/`, các tập chia vào `data/train/`, `data/val/`, `data/test/`, mỗi tập chứa các thư mục class.
+- Notebook EDA chỉ đọc ảnh gốc, không xóa/sửa nhãn hoặc chia dữ liệu.
+- Chạy `preprocess/Preprocessing.ipynb` để kiểm tra ảnh, sửa các nhãn đã xác nhận, loại ảnh trùng và tạo CSV cho train/validation/test.
 - Dùng cùng một cách chia dữ liệu cho cả 3 mô hình để so sánh kết quả. Chỉ áp dụng augmentation cho tập train; dùng validation để chọn mô hình và test để đánh giá cuối cùng.
 - Thay tên `model_1`, `model_2`, `model_3` khi chọn kiến trúc cụ thể; đặt phần định nghĩa và cấu hình riêng của từng mô hình trong thư mục tương ứng.
 
-Hiện chỉ có dữ liệu gốc và notebook EDA. Các thư mục còn lại là khung chuẩn bị, chưa chia dữ liệu hoặc triển khai huấn luyện. Dữ liệu sinh ra trong `processed/train/val/test` được bỏ qua bởi Git.
+Pipeline tiền xử lý PyTorch nằm trong `preprocess/preprocessing.py`. Complex CNN
+nằm trong `models/model_2/train_complex_cnn.py`. Dữ liệu sinh ra trong
+`processed/train/val/test` và kết quả trong `artifacts/` được bỏ qua bởi Git.
 
 ## Thiết kế Complex CNN
 
 Complex CNN vẫn sử dụng các thành phần cơ bản đã có trong Simple CNN như
-`Conv2D`, `BatchNormalization` và `MaxPooling2D`. Điểm khác biệt chính là mỗi
-khối có hai lớp convolution để học đặc trưng kỹ hơn trước khi pooling, đồng
-thời sử dụng ReLU, kernel `5x5` và global average pooling.
+`Conv2d`, `BatchNorm2d`, ReLU và `MaxPool2d`. Model chỉ dùng convolution thông
+thường: một kernel `5x5` ở đầu mạng và kernel `3x3` cho toàn bộ phần còn lại;
+không dùng depthwise convolution, pointwise convolution hoặc convolution
+stride 2.
 
-Kiến trúc dự kiến:
+Mỗi residual block giữ nguyên kích thước đầu vào và đầu ra. Ở giữa block, số
+kênh được mở rộng gấp đôi để học thêm đặc trưng rồi thu nhỏ về số kênh ban đầu
+để cộng với input. MaxPooling tiếp tục đảm nhiệm việc giảm chiều cao và chiều
+rộng giữa các stage. Model có bốn stage và năm residual block, phân bố
+`1-1-2-1`. Cách phân bố này giữ stage thứ ba sâu hơn, bám theo tỉ lệ macro
+`3-3-9-3` của ConvNeXt nhưng được thu nhỏ để phù hợp bài tập. Số kênh tăng dần
+`16-32-64-128` để giữ model gọn hơn cho tập train 10,847 ảnh.
+
+Kiến trúc:
 
 ```text
-Input 128x128x3
-  -> Conv 32, 5x5 -> BatchNorm -> ReLU
-  -> Conv 32, 3x3 -> BatchNorm -> ReLU
+Input 224x224x3
+
+  -> Conv 5x5, 16 -> BatchNorm -> ReLU
+
+  -> Residual block 16
+       Conv 3x3: 16 -> 16  -> BatchNorm -> ReLU
+       Conv 3x3: 16 -> 32  -> BatchNorm -> ReLU
+       Conv 3x3: 32 -> 16  -> BatchNorm
+       Add input -> ReLU
   -> MaxPooling
 
-  -> Conv 64, 5x5 -> BatchNorm -> ReLU
-  -> Conv 64, 3x3 -> BatchNorm -> ReLU
+  -> Conv 3x3: 16 -> 32 -> BatchNorm -> ReLU
+  -> Residual block 32
+       Conv 3x3: 32 -> 32  -> BatchNorm -> ReLU
+       Conv 3x3: 32 -> 64  -> BatchNorm -> ReLU
+       Conv 3x3: 64 -> 32  -> BatchNorm
+       Add input -> ReLU
   -> MaxPooling
 
-  -> Conv 128, 5x5 -> BatchNorm -> ReLU
-  -> Conv 128, 3x3 -> BatchNorm -> ReLU
+  -> Conv 3x3: 32 -> 64 -> BatchNorm -> ReLU
+  -> Residual block 64 (lặp 2 lần)
+       Conv 3x3: 64  -> 64  -> BatchNorm -> ReLU
+       Conv 3x3: 64  -> 128 -> BatchNorm -> ReLU
+       Conv 3x3: 128 -> 64  -> BatchNorm
+       Add input -> ReLU
   -> MaxPooling
 
-  -> GlobalAveragePooling
-  -> Dense 128 -> ReLU -> Dropout
-  -> Dense 12 -> Softmax
+  -> Conv 3x3: 64 -> 128 -> BatchNorm -> ReLU
+  -> Residual block 128
+       Conv 3x3: 128 -> 128 -> BatchNorm -> ReLU
+       Conv 3x3: 128 -> 256 -> BatchNorm -> ReLU
+       Conv 3x3: 256 -> 128 -> BatchNorm
+       Add input -> ReLU
+
+  -> AdaptiveAvgPool2d
+  -> Linear 128 -> ReLU -> Dropout
+  -> Linear 12
 ```
 
-### ReLU
+Lớp cuối trả về 12 logits. Không đặt Softmax trong model vì
+`CrossEntropyLoss` của PyTorch đã xử lý logits trực tiếp; lớp có logit lớn nhất
+vẫn là dự đoán của model.
 
-ReLU là hàm kích hoạt đơn giản: giữ nguyên giá trị dương và đổi giá trị âm thành
-`0`. Trong model này, ReLU được đặt sau Batch Normalization:
+### Một kernel 5x5, sau đó dùng kernel 3x3
+
+Lớp đầu tiên dùng kernel `5x5` để quan sát một vùng tương đối rộng ngay trên ảnh
+gốc. Đây là lớp duy nhất dùng `5x5`. Sau đó model dùng `3x3` vì kernel nhỏ cần
+ít tham số và phép tính hơn, phù hợp khi số kênh tăng lên ở các stage sâu hơn.
+Padding giữ nguyên chiều cao và chiều rộng để residual connection có thể cộng
+hai tensor cùng shape.
 
 ```python
-layers.Conv2D(32, 5, padding='same', use_bias=False),
-layers.BatchNormalization(),
-layers.Activation('relu'),
+nn.Conv2d(3, 16, kernel_size=5, padding=2, bias=False),
+nn.BatchNorm2d(16),
+nn.ReLU(),
 ```
 
-### Kernel lớn hơn
+### Mở rộng và thu nhỏ số kênh
 
-Simple CNN dùng kernel `3x3`: tại mỗi vị trí, convolution quan sát một vùng gồm
-9 phần tử của đầu vào. Complex CNN thêm kernel `5x5`, nên tại mỗi vị trí lớp có
-thể quan sát một vùng rộng hơn gồm 25 phần tử. Vùng quan sát rộng hơn giúp model
-kết hợp các chi tiết nằm xa nhau hơn, chẳng hạn hình dáng tổng thể, đường viền
-hoặc một phần lớn hơn của vật thể.
+Ví dụ, block 32 kênh biến đổi `32 -> 64 -> 32`. Lớp giữa có nhiều kênh hơn để
+học các đặc trưng trung gian khác nhau. Lớp cuối thu nhỏ về 32 kênh để output có
+cùng shape với input. Hệ số mở rộng 2 lần giúp model có thêm kênh trung gian
+nhưng vẫn giữ số tham số và phép tính ở mức hợp lý.
 
-Kernel `5x5` cần nhiều phép tính hơn `3x3`, vì vậy mỗi khối chỉ dùng `5x5` ở
-convolution đầu tiên để thu thập thông tin trên vùng rộng. Convolution `3x3`
-tiếp theo tiếp tục tinh chỉnh các đặc trưng cục bộ mà không làm model quá nặng.
+### Residual connection
+
+Đầu ra của nhánh convolution được cộng với input ban đầu:
+
+```text
+output = input + transformed_input
+```
+
+Nhánh convolution học phần thông tin cần bổ sung, còn input có một đường truyền
+trực tiếp đến output. Hai tensor chỉ được cộng khi có cùng chiều cao, chiều rộng
+và số kênh; vì vậy mỗi block phải thu nhỏ về số kênh ban đầu trước phép cộng.
+Phép cộng được dùng thay cho concatenate để không làm tăng số kênh của output.
 
 ### Global average pooling
 
@@ -97,58 +147,60 @@ biến mỗi kênh thành một con số:
 H x W x C -> 1 x 1 x C -> vector C phần tử
 ```
 
-Ví dụ, đầu vào `16x16x128` sẽ trở thành vector có 128 phần tử. Mỗi phần tử tóm
+Ví dụ, đầu vào `28x28x128` sẽ trở thành vector có 128 phần tử. Mỗi phần tử tóm
 tắt mức độ xuất hiện của một đặc trưng trên toàn ảnh. Vector này được đưa vào
-lớp Dense để phân loại.
+lớp Linear để phân loại.
 
-Cách này thay cho `Flatten`. `Flatten` nối toàn bộ `16x16x128 = 32,768` giá trị
-thành một vector lớn, trong khi global average pooling chỉ tạo 128 giá trị. Vì
-vậy phần phân loại cần ít tham số hơn, model nhẹ hơn và giảm nguy cơ ghi nhớ quá
-chi tiết vị trí của ảnh train.
+Cách này tránh nối trực tiếp toàn bộ `28x28x128 = 100,352` giá trị vào classifier.
+Global average pooling chỉ tạo 128 giá trị, nên phần phân loại cần ít tham số
+hơn và giảm nguy cơ ghi nhớ quá chi tiết vị trí của ảnh train.
 
 Complex CNN được so sánh với Simple CNN trên cùng train/validation/test split,
 augmentation, class weight và seed. Validation được dùng để chọn checkpoint;
 test được đo định kỳ để theo dõi accuracy và F1.
 
-Code huấn luyện và đánh giá nằm tại
+Code PyTorch để định nghĩa, huấn luyện và đánh giá model nằm tại
 `models/model_2/train_complex_cnn.py`. Chạy từ thư mục gốc của repository:
 
 ```sh
 python models/model_2/train_complex_cnn.py
 ```
 
-Mỗi process chỉ dùng một GPU trong `CUDA_VISIBLE_DEVICES` và mặc định giới hạn
-VRAM ở 8 GB. Muốn dùng hai GPU thì chạy hai process độc lập với hai seed và hai
-thư mục output khác nhau; script sẽ dừng với thông báo lỗi nếu một process vô
-tình nhìn thấy nhiều GPU. Cách này giúp hai lần train độc lập, không cần đồng bộ
-giữa các GPU.
+Mỗi process dùng một GPU trong `CUDA_VISIBLE_DEVICES`. Muốn thử hai seed trên
+hai GPU thì chạy hai process độc lập với hai seed và hai thư mục output khác
+nhau; mỗi model vẫn có batch size riêng là 32.
 
 Script lưu model tốt nhất, lịch sử train, classification report và confusion
 matrix vào `artifacts/complex_cnn/`.
 
-Mặc định model train đủ 200 epoch. Sau mỗi 10 epoch, script chạy validation để
-chọn checkpoint và chạy test để ghi `Test accuracy`, `Macro-F1` và
-`Weighted-F1` vào `test_metrics_every_10_epochs.csv`. Model có `val_loss` thấp
-nhất được lưu làm checkpoint tốt nhất và được nạp lại để đánh giá cuối cùng.
+Mặc định model train đủ 200 epoch. Validation chạy sau mỗi epoch và chỉ
+`val_loss` được dùng để lưu `best_model.pt`. Test cũng được đo sau mỗi epoch và
+script ghi `Test accuracy`, `Macro-F1` và `Weighted-F1`, nhưng không dùng test
+để chọn checkpoint. Cuối cùng, checkpoint có validation loss thấp nhất được
+nạp lại để đánh giá test.
 
-### Chạy lại kết quả 86.24%
-
-Chạy từ thư mục gốc của repository (thay GPU `0` nếu cần):
+Chạy từ thư mục gốc của repository, thay GPU `0` nếu cần:
 
 ```sh
 CUDA_VISIBLE_DEVICES=0 python models/model_2/train_complex_cnn.py \
-  --epochs 200 --validation-frequency 10 --batch-size 32 \
-  --learning-rate 1e-4 --seed 42 --gpu-memory-mb 8192 \
-  --output-dir artifacts/complex_cnn_relu_seed42
+  --epochs 200 --test-frequency 1 --batch-size 32 --image-size 224 \
+  --learning-rate 1e-4 --seed 42 \
+  --output-dir artifacts/complex_cnn
 ```
 
-Kết quả tốt nhất đã ghi nhận tại epoch 170: **Test accuracy 86.24%**,
-**Macro-F1 83.84%**, **Weighted-F1 86.32%**. Xem lại dòng này bằng:
+### Kết quả Complex CNN
 
-```sh
-awk -F, 'NR == 1 || $1 == 170' \
-  artifacts/complex_cnn_relu_seed42/test_metrics_every_10_epochs.csv
-```
+Hai seed được train độc lập trong 200 epoch. Checkpoint tốt nhất được chọn chỉ
+bằng validation loss; test không được dùng để chọn model.
+
+| Seed | Best epoch | Test accuracy | Macro-F1 | Weighted-F1 |
+|---:|---:|---:|---:|---:|
+| 42 | 89 | 87.91% | 85.99% | 87.94% |
+| 43 | 191 | 86.32% | 83.95% | 86.30% |
+
+Model có `1,282,460` tham số. Kết quả seed 42 tại epoch 89 là kết quả chính vì
+checkpoint này có validation loss tốt nhất trong run seed 42 và đạt kết quả
+cao hơn seed 43 trên cả ba test metric.
 
 ## Nguồn và phạm vi sử dụng
 
