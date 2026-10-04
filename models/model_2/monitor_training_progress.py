@@ -30,6 +30,11 @@ def parse_args():
         type=Path,
         default=Path("artifacts/training_progress.txt"),
     )
+    parser.add_argument(
+        "--history-output",
+        type=Path,
+        default=Path("artifacts/training_progress_history.txt"),
+    )
     return parser.parse_args()
 
 
@@ -43,12 +48,16 @@ def parse_runs(values):
     return runs
 
 
-def read_last_csv_row(path):
+def read_csv_rows(path):
     if not path.exists():
-        return None
+        return []
 
     with path.open(encoding="utf-8") as file:
-        rows = list(csv.DictReader(file))
+        return list(csv.DictReader(file))
+
+
+def read_last_csv_row(path):
+    rows = read_csv_rows(path)
     return rows[-1] if rows else None
 
 
@@ -90,6 +99,34 @@ def format_run(name, run_dir, total_epochs, test_frequency):
     return "\n".join(lines)
 
 
+def format_history(name, run_dir, total_epochs):
+    """Tạo một dòng tiến độ cho mỗi epoch đã hoàn thành."""
+    history_rows = read_csv_rows(run_dir / "training_history.csv")
+    test_rows = read_csv_rows(run_dir / "test_metrics.csv")
+    tests_by_epoch = {int(row["epoch"]): row for row in test_rows}
+    lines = [f"{name} history"]
+
+    for row in history_rows:
+        epoch = int(row["epoch"])
+        percent = 100 * epoch / total_epochs
+        line = (
+            f"{make_bar(epoch, total_epochs)} "
+            f"{epoch:03d}/{total_epochs} ({percent:5.1f}%)  "
+            f"train={float(row['train_accuracy']):.4f}  "
+            f"val={float(row['val_accuracy']):.4f}  "
+            f"val_loss={float(row['val_loss']):.4f}"
+        )
+        test_row = tests_by_epoch.get(epoch)
+        if test_row is not None:
+            line += (
+                f"  test={float(test_row['test_accuracy']):.4f}  "
+                f"macro_f1={float(test_row['test_macro_f1']):.4f}  "
+                f"weighted_f1={float(test_row['test_weighted_f1']):.4f}"
+            )
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def write_text_atomic(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = path.with_suffix(path.suffix + ".tmp")
@@ -105,6 +142,7 @@ def main():
         sections = [
             f"Updated: {datetime.now().astimezone().isoformat(timespec='seconds')}"
         ]
+        history_sections = []
         finished = True
 
         for name, run_dir in runs:
@@ -119,8 +157,15 @@ def main():
             )
             sections.append(progress)
             write_text_atomic(run_dir / "progress.txt", progress + "\n")
+            history = format_history(name, run_dir, args.epochs)
+            history_sections.append(history)
+            write_text_atomic(run_dir / "progress_history.txt", history + "\n")
 
         write_text_atomic(args.output, "\n\n".join(sections) + "\n")
+        write_text_atomic(
+            args.history_output,
+            "\n\n".join(history_sections) + "\n",
+        )
         if finished or args.once:
             break
         time.sleep(args.interval)
