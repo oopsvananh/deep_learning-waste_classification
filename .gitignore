@@ -10,8 +10,15 @@ __pycache__/
 .ipynb_checkpoints/
 .venv/
 
-# Local training outputs and checkpoints
-/artifacts/
+# Local training outputs and checkpoints. Keep only the compact TXT histories.
+/artifacts/*
+!/artifacts/training_progress_5block_small_history.txt
+!/artifacts/complex_cnn_5block_small_seed42/
+/artifacts/complex_cnn_5block_small_seed42/*
+!/artifacts/complex_cnn_5block_small_seed42/progress_history.txt
+!/artifacts/complex_cnn_5block_small_seed43/
+/artifacts/complex_cnn_5block_small_seed43/*
+!/artifacts/complex_cnn_5block_small_seed43/progress_history.txt
 
 # Generated datasets (keep folder structure)
 /data/processed/*
