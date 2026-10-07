@@ -19,6 +19,9 @@ __pycache__/
 !/artifacts/complex_cnn_5block_small_seed43/
 /artifacts/complex_cnn_5block_small_seed43/*
 !/artifacts/complex_cnn_5block_small_seed43/progress_history.txt
+!/artifacts/logs/
+/artifacts/logs/*
+!/artifacts/logs/complex_cnn_parallel_stem_seed42.log
 
 # Generated datasets (keep folder structure)
 /data/processed/*

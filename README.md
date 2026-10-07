@@ -45,9 +45,9 @@ nằm trong `models/model_2/train_complex_cnn.py`. Dữ liệu sinh ra trong
 
 Complex CNN vẫn sử dụng các thành phần cơ bản đã có trong Simple CNN như
 `Conv2d`, `BatchNorm2d`, ReLU và `MaxPool2d`. Model chỉ dùng convolution thông
-thường: một kernel `5x5` ở đầu mạng và kernel `3x3` cho toàn bộ phần còn lại;
-không dùng depthwise convolution, pointwise convolution hoặc convolution
-stride 2.
+thường. Stem có ba convolution `3x3`, `5x5` và `7x7` chạy song song; phần còn
+lại dùng kernel `3x3`. Model không dùng depthwise convolution, pointwise
+convolution hoặc convolution stride 2.
 
 Mỗi residual block giữ nguyên kích thước đầu vào và đầu ra. Ở giữa block, số
 kênh được mở rộng gấp đôi để học thêm đặc trưng rồi thu nhỏ về số kênh ban đầu
@@ -62,7 +62,11 @@ Kiến trúc:
 ```text
 Input 224x224x3
 
-  -> Conv 5x5, 16 -> BatchNorm -> ReLU
+  -> Parallel stem
+       Conv 3x3: 3 -> 6 -> BatchNorm -> ReLU
+       Conv 5x5: 3 -> 5 -> BatchNorm -> ReLU
+       Conv 7x7: 3 -> 5 -> BatchNorm -> ReLU
+       Concatenate channels: 6 + 5 + 5 = 16
 
   -> Residual block 16
        Conv 3x3: 16 -> 16  -> BatchNorm -> ReLU
@@ -103,18 +107,22 @@ Lớp cuối trả về 12 logits. Không đặt Softmax trong model vì
 `CrossEntropyLoss` của PyTorch đã xử lý logits trực tiếp; lớp có logit lớn nhất
 vẫn là dự đoán của model.
 
-### Một kernel 5x5, sau đó dùng kernel 3x3
+### Parallel stem
 
-Lớp đầu tiên dùng kernel `5x5` để quan sát một vùng tương đối rộng ngay trên ảnh
-gốc. Đây là lớp duy nhất dùng `5x5`. Sau đó model dùng `3x3` vì kernel nhỏ cần
-ít tham số và phép tính hơn, phù hợp khi số kênh tăng lên ở các stage sâu hơn.
-Padding giữ nguyên chiều cao và chiều rộng để residual connection có thể cộng
-hai tensor cùng shape.
+Ba convolution đầu tiên cùng nhận một ảnh. Kernel `3x3` tập trung vào chi tiết
+nhỏ, `5x5` nhìn vùng trung bình và `7x7` nhìn vùng rộng hơn. Mỗi nhánh dùng
+padding phù hợp nên đều trả về feature map `224x224`; model nối các nhánh theo
+chiều channels để tạo 16 channels cho stage đầu tiên.
 
 ```python
-nn.Conv2d(3, 16, kernel_size=5, padding=2, bias=False),
-nn.BatchNorm2d(16),
-nn.ReLU(),
+branch_3x3 = ConvBlock(3, 6, kernel_size=3)
+branch_5x5 = ConvBlock(3, 5, kernel_size=5)
+branch_7x7 = ConvBlock(3, 5, kernel_size=7)
+
+output = torch.cat(
+    [branch_3x3(x), branch_5x5(x), branch_7x7(x)],
+    dim=1,
+)
 ```
 
 ### Mở rộng và thu nhỏ số kênh
@@ -188,7 +196,7 @@ CUDA_VISIBLE_DEVICES=0 python models/model_2/train_complex_cnn.py \
   --output-dir artifacts/complex_cnn
 ```
 
-### Kết quả Complex CNN
+### Kết quả phiên bản stem 5x5 trước đó
 
 Hai seed được train độc lập trong 200 epoch. Checkpoint tốt nhất được chọn chỉ
 bằng validation loss; test không được dùng để chọn model.
@@ -198,9 +206,22 @@ bằng validation loss; test không được dùng để chọn model.
 | 42 | 89 | 87.91% | 85.99% | 87.94% |
 | 43 | 191 | 86.32% | 83.95% | 86.30% |
 
-Model có `1,282,460` tham số. Kết quả seed 42 tại epoch 89 là kết quả chính vì
+Phiên bản cũ có `1,282,460` tham số. Kết quả seed 42 tại epoch 89 là kết quả chính vì
 checkpoint này có validation loss tốt nhất trong run seed 42 và đạt kết quả
 cao hơn seed 43 trên cả ba test metric.
+
+### Kết quả Parallel stem hiện tại
+
+Parallel stem có `1,282,532` tham số và được train 200 epoch với seed 42, ảnh
+`224x224`, batch size 32 và learning rate `1e-4`. Checkpoint epoch 187 được chọn
+chỉ bằng validation loss, sau đó mới dùng để tính kết quả test chính thức.
+
+| Seed | Epoch được chọn | Test accuracy | Macro-F1 | Weighted-F1 |
+| ---: | ---: | ---: | ---: | ---: |
+| 42 | 187 | 87.18% | 85.25% | 87.19% |
+
+Full training log gồm train, validation và test metrics của toàn bộ 200 epoch
+nằm tại `artifacts/logs/complex_cnn_parallel_stem_seed42.log`.
 
 ## Nguồn và phạm vi sử dụng
 

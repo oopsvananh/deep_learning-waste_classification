@@ -77,6 +77,24 @@ class ConvBlock(nn.Module):
         return self.layers(x)
 
 
+class ParallelStem(nn.Module):
+    """Nhìn ảnh ở ba vùng 3x3, 5x5 và 7x7 rồi nối các channels."""
+
+    def __init__(self):
+        super().__init__()
+        self.branch_3x3 = ConvBlock(3, 6, kernel_size=3)
+        self.branch_5x5 = ConvBlock(3, 5, kernel_size=5)
+        self.branch_7x7 = ConvBlock(3, 5, kernel_size=7)
+
+    def forward(self, x):
+        features = [
+            self.branch_3x3(x),
+            self.branch_5x5(x),
+            self.branch_7x7(x),
+        ]
+        return torch.cat(features, dim=1)
+
+
 class ResidualBlock(nn.Module):
     """Mở rộng kênh 2 lần, thu nhỏ rồi cộng với input."""
 
@@ -113,8 +131,7 @@ class ComplexCNN(nn.Module):
         super().__init__()
 
         self.features = nn.Sequential(
-            # Kernel 5x5 chỉ dùng một lần để quan sát vùng rộng trên ảnh gốc.
-            ConvBlock(3, 16, kernel_size=5),
+            ParallelStem(),
             ResidualBlock(16),
             nn.MaxPool2d(kernel_size=2),
             ConvBlock(16, 32),

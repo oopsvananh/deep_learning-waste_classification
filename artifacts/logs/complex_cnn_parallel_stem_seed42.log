@@ -1,0 +1,405 @@
+Thiết bị: cuda
+Kích thước ảnh: 224 | Batch size: 32
+Số tham số: 1,282,532
+Epoch 001/200 | train 0.4368 | val 0.5413 | val_loss 1.5814
+Test @ epoch 1: accuracy=0.5673, macro_f1=0.4371, weighted_f1=0.5275
+Epoch 002/200 | train 0.5424 | val 0.5736 | val_loss 1.2965
+Test @ epoch 2: accuracy=0.5901, macro_f1=0.5062, weighted_f1=0.5745
+Epoch 003/200 | train 0.5731 | val 0.6123 | val_loss 1.3084
+Test @ epoch 3: accuracy=0.6129, macro_f1=0.5150, weighted_f1=0.6013
+Epoch 004/200 | train 0.6009 | val 0.6381 | val_loss 1.2181
+Test @ epoch 4: accuracy=0.6387, macro_f1=0.5652, weighted_f1=0.6344
+Epoch 005/200 | train 0.6259 | val 0.6695 | val_loss 1.0912
+Test @ epoch 5: accuracy=0.6908, macro_f1=0.6330, weighted_f1=0.6886
+Epoch 006/200 | train 0.6392 | val 0.6497 | val_loss 1.0974
+Test @ epoch 6: accuracy=0.6637, macro_f1=0.5803, weighted_f1=0.6505
+Epoch 007/200 | train 0.6491 | val 0.6213 | val_loss 1.1862
+Test @ epoch 7: accuracy=0.6288, macro_f1=0.5620, weighted_f1=0.6254
+Epoch 008/200 | train 0.6640 | val 0.6747 | val_loss 1.1162
+Test @ epoch 8: accuracy=0.6839, macro_f1=0.6103, weighted_f1=0.6724
+Epoch 009/200 | train 0.6758 | val 0.7018 | val_loss 1.0726
+Test @ epoch 9: accuracy=0.7127, macro_f1=0.6502, weighted_f1=0.6981
+Epoch 010/200 | train 0.6877 | val 0.7156 | val_loss 0.9433
+Test @ epoch 10: accuracy=0.7523, macro_f1=0.7108, weighted_f1=0.7484
+Epoch 011/200 | train 0.6974 | val 0.7117 | val_loss 0.9619
+Test @ epoch 11: accuracy=0.7376, macro_f1=0.6904, weighted_f1=0.7330
+Epoch 012/200 | train 0.7083 | val 0.7143 | val_loss 0.9559
+Test @ epoch 12: accuracy=0.7355, macro_f1=0.6750, weighted_f1=0.7246
+Epoch 013/200 | train 0.7125 | val 0.6777 | val_loss 0.9791
+Test @ epoch 13: accuracy=0.7084, macro_f1=0.6584, weighted_f1=0.7053
+Epoch 014/200 | train 0.7238 | val 0.6781 | val_loss 0.9608
+Test @ epoch 14: accuracy=0.6994, macro_f1=0.6906, weighted_f1=0.7064
+Epoch 015/200 | train 0.7456 | val 0.7410 | val_loss 0.8259
+Test @ epoch 15: accuracy=0.7682, macro_f1=0.7274, weighted_f1=0.7674
+Epoch 016/200 | train 0.7596 | val 0.7513 | val_loss 0.8053
+Test @ epoch 16: accuracy=0.7776, macro_f1=0.7372, weighted_f1=0.7761
+Epoch 017/200 | train 0.7597 | val 0.7423 | val_loss 0.9386
+Test @ epoch 17: accuracy=0.7630, macro_f1=0.7155, weighted_f1=0.7612
+Epoch 018/200 | train 0.7660 | val 0.7530 | val_loss 0.8049
+Test @ epoch 18: accuracy=0.7828, macro_f1=0.7485, weighted_f1=0.7835
+Epoch 019/200 | train 0.7672 | val 0.7474 | val_loss 0.8219
+Test @ epoch 19: accuracy=0.7772, macro_f1=0.7498, weighted_f1=0.7816
+Epoch 020/200 | train 0.7755 | val 0.7698 | val_loss 0.7698
+Test @ epoch 20: accuracy=0.7953, macro_f1=0.7678, weighted_f1=0.7965
+Epoch 021/200 | train 0.7812 | val 0.7784 | val_loss 0.7483
+Test @ epoch 21: accuracy=0.8004, macro_f1=0.7680, weighted_f1=0.8003
+Epoch 022/200 | train 0.7749 | val 0.7793 | val_loss 0.7387
+Test @ epoch 22: accuracy=0.7862, macro_f1=0.7691, weighted_f1=0.7902
+Epoch 023/200 | train 0.7834 | val 0.7926 | val_loss 0.7154
+Test @ epoch 23: accuracy=0.8108, macro_f1=0.7751, weighted_f1=0.8055
+Epoch 024/200 | train 0.7885 | val 0.7831 | val_loss 0.7731
+Test @ epoch 24: accuracy=0.8065, macro_f1=0.7750, weighted_f1=0.8070
+Epoch 025/200 | train 0.8006 | val 0.8038 | val_loss 0.7234
+Test @ epoch 25: accuracy=0.8138, macro_f1=0.7754, weighted_f1=0.8118
+Epoch 026/200 | train 0.7953 | val 0.7724 | val_loss 0.7150
+Test @ epoch 26: accuracy=0.8047, macro_f1=0.7710, weighted_f1=0.8043
+Epoch 027/200 | train 0.8014 | val 0.8046 | val_loss 0.6881
+Test @ epoch 27: accuracy=0.8198, macro_f1=0.7872, weighted_f1=0.8164
+Epoch 028/200 | train 0.8081 | val 0.7879 | val_loss 0.7065
+Test @ epoch 28: accuracy=0.7957, macro_f1=0.7569, weighted_f1=0.7959
+Epoch 029/200 | train 0.8070 | val 0.8008 | val_loss 0.7213
+Test @ epoch 29: accuracy=0.8189, macro_f1=0.7849, weighted_f1=0.8151
+Epoch 030/200 | train 0.8093 | val 0.7784 | val_loss 0.7094
+Test @ epoch 30: accuracy=0.8060, macro_f1=0.7821, weighted_f1=0.8084
+Epoch 031/200 | train 0.8173 | val 0.7870 | val_loss 0.7620
+Test @ epoch 31: accuracy=0.8090, macro_f1=0.7803, weighted_f1=0.8102
+Epoch 032/200 | train 0.8263 | val 0.8094 | val_loss 0.6264
+Test @ epoch 32: accuracy=0.8357, macro_f1=0.8085, weighted_f1=0.8357
+Epoch 033/200 | train 0.8364 | val 0.8249 | val_loss 0.6352
+Test @ epoch 33: accuracy=0.8400, macro_f1=0.8172, weighted_f1=0.8393
+Epoch 034/200 | train 0.8410 | val 0.8210 | val_loss 0.6471
+Test @ epoch 34: accuracy=0.8413, macro_f1=0.8119, weighted_f1=0.8406
+Epoch 035/200 | train 0.8364 | val 0.8176 | val_loss 0.6261
+Test @ epoch 35: accuracy=0.8357, macro_f1=0.8098, weighted_f1=0.8364
+Epoch 036/200 | train 0.8432 | val 0.7926 | val_loss 0.6613
+Test @ epoch 36: accuracy=0.8262, macro_f1=0.8025, weighted_f1=0.8284
+Epoch 037/200 | train 0.8436 | val 0.8154 | val_loss 0.6217
+Test @ epoch 37: accuracy=0.8482, macro_f1=0.8206, weighted_f1=0.8476
+Epoch 038/200 | train 0.8469 | val 0.8292 | val_loss 0.5969
+Test @ epoch 38: accuracy=0.8473, macro_f1=0.8228, weighted_f1=0.8478
+Epoch 039/200 | train 0.8446 | val 0.8227 | val_loss 0.6096
+Test @ epoch 39: accuracy=0.8387, macro_f1=0.8173, weighted_f1=0.8396
+Epoch 040/200 | train 0.8494 | val 0.8236 | val_loss 0.5988
+Test @ epoch 40: accuracy=0.8443, macro_f1=0.8210, weighted_f1=0.8449
+Epoch 041/200 | train 0.8517 | val 0.8253 | val_loss 0.6324
+Test @ epoch 41: accuracy=0.8499, macro_f1=0.8277, weighted_f1=0.8504
+Epoch 042/200 | train 0.8520 | val 0.8236 | val_loss 0.6448
+Test @ epoch 42: accuracy=0.8447, macro_f1=0.8159, weighted_f1=0.8443
+Epoch 043/200 | train 0.8624 | val 0.8412 | val_loss 0.5856
+Test @ epoch 43: accuracy=0.8649, macro_f1=0.8415, weighted_f1=0.8645
+Epoch 044/200 | train 0.8667 | val 0.8378 | val_loss 0.5903
+Test @ epoch 44: accuracy=0.8572, macro_f1=0.8350, weighted_f1=0.8570
+Epoch 045/200 | train 0.8668 | val 0.8330 | val_loss 0.5696
+Test @ epoch 45: accuracy=0.8538, macro_f1=0.8354, weighted_f1=0.8551
+Epoch 046/200 | train 0.8634 | val 0.8322 | val_loss 0.5820
+Test @ epoch 46: accuracy=0.8555, macro_f1=0.8343, weighted_f1=0.8561
+Epoch 047/200 | train 0.8683 | val 0.8335 | val_loss 0.5915
+Test @ epoch 47: accuracy=0.8555, macro_f1=0.8285, weighted_f1=0.8552
+Epoch 048/200 | train 0.8691 | val 0.8361 | val_loss 0.5853
+Test @ epoch 48: accuracy=0.8611, macro_f1=0.8361, weighted_f1=0.8605
+Epoch 049/200 | train 0.8717 | val 0.8395 | val_loss 0.5806
+Test @ epoch 49: accuracy=0.8602, macro_f1=0.8356, weighted_f1=0.8600
+Epoch 050/200 | train 0.8816 | val 0.8464 | val_loss 0.5545
+Test @ epoch 50: accuracy=0.8615, macro_f1=0.8384, weighted_f1=0.8618
+Epoch 051/200 | train 0.8757 | val 0.8408 | val_loss 0.5582
+Test @ epoch 51: accuracy=0.8654, macro_f1=0.8430, weighted_f1=0.8653
+Epoch 052/200 | train 0.8812 | val 0.8537 | val_loss 0.5542
+Test @ epoch 52: accuracy=0.8675, macro_f1=0.8464, weighted_f1=0.8673
+Epoch 053/200 | train 0.8740 | val 0.8412 | val_loss 0.5575
+Test @ epoch 53: accuracy=0.8525, macro_f1=0.8317, weighted_f1=0.8530
+Epoch 054/200 | train 0.8754 | val 0.8395 | val_loss 0.5538
+Test @ epoch 54: accuracy=0.8619, macro_f1=0.8406, weighted_f1=0.8619
+Epoch 055/200 | train 0.8784 | val 0.8412 | val_loss 0.5573
+Test @ epoch 55: accuracy=0.8546, macro_f1=0.8367, weighted_f1=0.8557
+Epoch 056/200 | train 0.8865 | val 0.8391 | val_loss 0.5548
+Test @ epoch 56: accuracy=0.8675, macro_f1=0.8472, weighted_f1=0.8674
+Epoch 057/200 | train 0.8758 | val 0.8455 | val_loss 0.5582
+Test @ epoch 57: accuracy=0.8649, macro_f1=0.8445, weighted_f1=0.8652
+Epoch 058/200 | train 0.8808 | val 0.8503 | val_loss 0.5509
+Test @ epoch 58: accuracy=0.8680, macro_f1=0.8498, weighted_f1=0.8688
+Epoch 059/200 | train 0.8754 | val 0.8477 | val_loss 0.5462
+Test @ epoch 59: accuracy=0.8662, macro_f1=0.8456, weighted_f1=0.8666
+Epoch 060/200 | train 0.8827 | val 0.8468 | val_loss 0.5341
+Test @ epoch 60: accuracy=0.8675, macro_f1=0.8500, weighted_f1=0.8676
+Epoch 061/200 | train 0.8823 | val 0.8464 | val_loss 0.5546
+Test @ epoch 61: accuracy=0.8619, macro_f1=0.8406, weighted_f1=0.8620
+Epoch 062/200 | train 0.8824 | val 0.8507 | val_loss 0.5469
+Test @ epoch 62: accuracy=0.8675, macro_f1=0.8468, weighted_f1=0.8677
+Epoch 063/200 | train 0.8778 | val 0.8429 | val_loss 0.5518
+Test @ epoch 63: accuracy=0.8615, macro_f1=0.8399, weighted_f1=0.8611
+Epoch 064/200 | train 0.8861 | val 0.8490 | val_loss 0.5518
+Test @ epoch 64: accuracy=0.8619, macro_f1=0.8408, weighted_f1=0.8621
+Epoch 065/200 | train 0.8849 | val 0.8472 | val_loss 0.5354
+Test @ epoch 65: accuracy=0.8654, macro_f1=0.8450, weighted_f1=0.8652
+Epoch 066/200 | train 0.8854 | val 0.8524 | val_loss 0.5303
+Test @ epoch 66: accuracy=0.8701, macro_f1=0.8510, weighted_f1=0.8702
+Epoch 067/200 | train 0.8868 | val 0.8438 | val_loss 0.5396
+Test @ epoch 67: accuracy=0.8619, macro_f1=0.8420, weighted_f1=0.8626
+Epoch 068/200 | train 0.8918 | val 0.8503 | val_loss 0.5410
+Test @ epoch 68: accuracy=0.8641, macro_f1=0.8439, weighted_f1=0.8639
+Epoch 069/200 | train 0.8953 | val 0.8472 | val_loss 0.5436
+Test @ epoch 69: accuracy=0.8675, macro_f1=0.8477, weighted_f1=0.8682
+Epoch 070/200 | train 0.8854 | val 0.8511 | val_loss 0.5506
+Test @ epoch 70: accuracy=0.8675, macro_f1=0.8464, weighted_f1=0.8673
+Epoch 071/200 | train 0.8881 | val 0.8442 | val_loss 0.5403
+Test @ epoch 71: accuracy=0.8645, macro_f1=0.8444, weighted_f1=0.8651
+Epoch 072/200 | train 0.8926 | val 0.8537 | val_loss 0.5464
+Test @ epoch 72: accuracy=0.8692, macro_f1=0.8478, weighted_f1=0.8694
+Epoch 073/200 | train 0.8924 | val 0.8485 | val_loss 0.5459
+Test @ epoch 73: accuracy=0.8624, macro_f1=0.8427, weighted_f1=0.8633
+Epoch 074/200 | train 0.8882 | val 0.8528 | val_loss 0.5432
+Test @ epoch 74: accuracy=0.8658, macro_f1=0.8456, weighted_f1=0.8665
+Epoch 075/200 | train 0.8913 | val 0.8541 | val_loss 0.5346
+Test @ epoch 75: accuracy=0.8710, macro_f1=0.8497, weighted_f1=0.8706
+Epoch 076/200 | train 0.8911 | val 0.8546 | val_loss 0.5411
+Test @ epoch 76: accuracy=0.8662, macro_f1=0.8447, weighted_f1=0.8663
+Epoch 077/200 | train 0.8920 | val 0.8498 | val_loss 0.5401
+Test @ epoch 77: accuracy=0.8671, macro_f1=0.8471, weighted_f1=0.8676
+Epoch 078/200 | train 0.8951 | val 0.8481 | val_loss 0.5374
+Test @ epoch 78: accuracy=0.8649, macro_f1=0.8450, weighted_f1=0.8655
+Epoch 079/200 | train 0.8920 | val 0.8498 | val_loss 0.5419
+Test @ epoch 79: accuracy=0.8671, macro_f1=0.8473, weighted_f1=0.8677
+Epoch 080/200 | train 0.8928 | val 0.8490 | val_loss 0.5424
+Test @ epoch 80: accuracy=0.8641, macro_f1=0.8435, weighted_f1=0.8650
+Epoch 081/200 | train 0.8945 | val 0.8541 | val_loss 0.5422
+Test @ epoch 81: accuracy=0.8654, macro_f1=0.8448, weighted_f1=0.8660
+Epoch 082/200 | train 0.8960 | val 0.8515 | val_loss 0.5382
+Test @ epoch 82: accuracy=0.8671, macro_f1=0.8467, weighted_f1=0.8675
+Epoch 083/200 | train 0.8973 | val 0.8524 | val_loss 0.5425
+Test @ epoch 83: accuracy=0.8723, macro_f1=0.8498, weighted_f1=0.8724
+Epoch 084/200 | train 0.8882 | val 0.8515 | val_loss 0.5404
+Test @ epoch 84: accuracy=0.8658, macro_f1=0.8447, weighted_f1=0.8663
+Epoch 085/200 | train 0.8941 | val 0.8507 | val_loss 0.5389
+Test @ epoch 85: accuracy=0.8692, macro_f1=0.8490, weighted_f1=0.8696
+Epoch 086/200 | train 0.8915 | val 0.8559 | val_loss 0.5414
+Test @ epoch 86: accuracy=0.8718, macro_f1=0.8512, weighted_f1=0.8716
+Epoch 087/200 | train 0.8957 | val 0.8559 | val_loss 0.5361
+Test @ epoch 87: accuracy=0.8710, macro_f1=0.8504, weighted_f1=0.8712
+Epoch 088/200 | train 0.8932 | val 0.8515 | val_loss 0.5354
+Test @ epoch 88: accuracy=0.8662, macro_f1=0.8462, weighted_f1=0.8668
+Epoch 089/200 | train 0.8946 | val 0.8546 | val_loss 0.5342
+Test @ epoch 89: accuracy=0.8680, macro_f1=0.8477, weighted_f1=0.8682
+Epoch 090/200 | train 0.8941 | val 0.8567 | val_loss 0.5419
+Test @ epoch 90: accuracy=0.8697, macro_f1=0.8498, weighted_f1=0.8697
+Epoch 091/200 | train 0.8955 | val 0.8520 | val_loss 0.5402
+Test @ epoch 91: accuracy=0.8658, macro_f1=0.8455, weighted_f1=0.8666
+Epoch 092/200 | train 0.8938 | val 0.8554 | val_loss 0.5382
+Test @ epoch 92: accuracy=0.8718, macro_f1=0.8491, weighted_f1=0.8714
+Epoch 093/200 | train 0.8912 | val 0.8485 | val_loss 0.5379
+Test @ epoch 93: accuracy=0.8658, macro_f1=0.8460, weighted_f1=0.8666
+Epoch 094/200 | train 0.8934 | val 0.8528 | val_loss 0.5388
+Test @ epoch 94: accuracy=0.8667, macro_f1=0.8465, weighted_f1=0.8671
+Epoch 095/200 | train 0.8941 | val 0.8507 | val_loss 0.5384
+Test @ epoch 95: accuracy=0.8710, macro_f1=0.8503, weighted_f1=0.8712
+Epoch 096/200 | train 0.8987 | val 0.8507 | val_loss 0.5406
+Test @ epoch 96: accuracy=0.8688, macro_f1=0.8475, weighted_f1=0.8691
+Epoch 097/200 | train 0.8977 | val 0.8537 | val_loss 0.5338
+Test @ epoch 97: accuracy=0.8697, macro_f1=0.8477, weighted_f1=0.8696
+Epoch 098/200 | train 0.8931 | val 0.8576 | val_loss 0.5358
+Test @ epoch 98: accuracy=0.8684, macro_f1=0.8464, weighted_f1=0.8683
+Epoch 099/200 | train 0.8965 | val 0.8451 | val_loss 0.5393
+Test @ epoch 99: accuracy=0.8615, macro_f1=0.8414, weighted_f1=0.8624
+Epoch 100/200 | train 0.8951 | val 0.8554 | val_loss 0.5381
+Test @ epoch 100: accuracy=0.8675, macro_f1=0.8463, weighted_f1=0.8677
+Epoch 101/200 | train 0.8967 | val 0.8533 | val_loss 0.5398
+Test @ epoch 101: accuracy=0.8649, macro_f1=0.8430, weighted_f1=0.8649
+Epoch 102/200 | train 0.8953 | val 0.8541 | val_loss 0.5379
+Test @ epoch 102: accuracy=0.8658, macro_f1=0.8448, weighted_f1=0.8661
+Epoch 103/200 | train 0.8968 | val 0.8550 | val_loss 0.5421
+Test @ epoch 103: accuracy=0.8662, macro_f1=0.8454, weighted_f1=0.8665
+Epoch 104/200 | train 0.8968 | val 0.8550 | val_loss 0.5358
+Test @ epoch 104: accuracy=0.8718, macro_f1=0.8508, weighted_f1=0.8718
+Epoch 105/200 | train 0.8974 | val 0.8580 | val_loss 0.5330
+Test @ epoch 105: accuracy=0.8766, macro_f1=0.8569, weighted_f1=0.8765
+Epoch 106/200 | train 0.8961 | val 0.8520 | val_loss 0.5385
+Test @ epoch 106: accuracy=0.8718, macro_f1=0.8521, weighted_f1=0.8721
+Epoch 107/200 | train 0.8962 | val 0.8546 | val_loss 0.5347
+Test @ epoch 107: accuracy=0.8697, macro_f1=0.8515, weighted_f1=0.8700
+Epoch 108/200 | train 0.8960 | val 0.8533 | val_loss 0.5380
+Test @ epoch 108: accuracy=0.8692, macro_f1=0.8494, weighted_f1=0.8699
+Epoch 109/200 | train 0.8986 | val 0.8507 | val_loss 0.5386
+Test @ epoch 109: accuracy=0.8632, macro_f1=0.8426, weighted_f1=0.8642
+Epoch 110/200 | train 0.8966 | val 0.8550 | val_loss 0.5350
+Test @ epoch 110: accuracy=0.8723, macro_f1=0.8515, weighted_f1=0.8725
+Epoch 111/200 | train 0.8925 | val 0.8550 | val_loss 0.5331
+Test @ epoch 111: accuracy=0.8692, macro_f1=0.8471, weighted_f1=0.8693
+Epoch 112/200 | train 0.8962 | val 0.8550 | val_loss 0.5315
+Test @ epoch 112: accuracy=0.8697, macro_f1=0.8488, weighted_f1=0.8696
+Epoch 113/200 | train 0.8976 | val 0.8515 | val_loss 0.5374
+Test @ epoch 113: accuracy=0.8632, macro_f1=0.8417, weighted_f1=0.8637
+Epoch 114/200 | train 0.8975 | val 0.8541 | val_loss 0.5339
+Test @ epoch 114: accuracy=0.8671, macro_f1=0.8439, weighted_f1=0.8670
+Epoch 115/200 | train 0.8950 | val 0.8524 | val_loss 0.5377
+Test @ epoch 115: accuracy=0.8667, macro_f1=0.8446, weighted_f1=0.8669
+Epoch 116/200 | train 0.8969 | val 0.8554 | val_loss 0.5331
+Test @ epoch 116: accuracy=0.8684, macro_f1=0.8453, weighted_f1=0.8685
+Epoch 117/200 | train 0.8972 | val 0.8584 | val_loss 0.5333
+Test @ epoch 117: accuracy=0.8680, macro_f1=0.8463, weighted_f1=0.8680
+Epoch 118/200 | train 0.8981 | val 0.8546 | val_loss 0.5315
+Test @ epoch 118: accuracy=0.8684, macro_f1=0.8478, weighted_f1=0.8682
+Epoch 119/200 | train 0.8937 | val 0.8507 | val_loss 0.5370
+Test @ epoch 119: accuracy=0.8692, macro_f1=0.8480, weighted_f1=0.8697
+Epoch 120/200 | train 0.8961 | val 0.8533 | val_loss 0.5393
+Test @ epoch 120: accuracy=0.8684, macro_f1=0.8475, weighted_f1=0.8687
+Epoch 121/200 | train 0.8959 | val 0.8541 | val_loss 0.5336
+Test @ epoch 121: accuracy=0.8684, macro_f1=0.8460, weighted_f1=0.8685
+Epoch 122/200 | train 0.8953 | val 0.8546 | val_loss 0.5406
+Test @ epoch 122: accuracy=0.8632, macro_f1=0.8411, weighted_f1=0.8633
+Epoch 123/200 | train 0.8936 | val 0.8498 | val_loss 0.5395
+Test @ epoch 123: accuracy=0.8649, macro_f1=0.8457, weighted_f1=0.8655
+Epoch 124/200 | train 0.8937 | val 0.8528 | val_loss 0.5398
+Test @ epoch 124: accuracy=0.8662, macro_f1=0.8441, weighted_f1=0.8663
+Epoch 125/200 | train 0.8982 | val 0.8481 | val_loss 0.5393
+Test @ epoch 125: accuracy=0.8649, macro_f1=0.8447, weighted_f1=0.8654
+Epoch 126/200 | train 0.9003 | val 0.8520 | val_loss 0.5352
+Test @ epoch 126: accuracy=0.8705, macro_f1=0.8498, weighted_f1=0.8707
+Epoch 127/200 | train 0.8952 | val 0.8533 | val_loss 0.5309
+Test @ epoch 127: accuracy=0.8744, macro_f1=0.8555, weighted_f1=0.8749
+Epoch 128/200 | train 0.8979 | val 0.8550 | val_loss 0.5418
+Test @ epoch 128: accuracy=0.8662, macro_f1=0.8454, weighted_f1=0.8665
+Epoch 129/200 | train 0.8988 | val 0.8507 | val_loss 0.5355
+Test @ epoch 129: accuracy=0.8645, macro_f1=0.8442, weighted_f1=0.8652
+Epoch 130/200 | train 0.8966 | val 0.8528 | val_loss 0.5352
+Test @ epoch 130: accuracy=0.8688, macro_f1=0.8484, weighted_f1=0.8692
+Epoch 131/200 | train 0.8999 | val 0.8550 | val_loss 0.5376
+Test @ epoch 131: accuracy=0.8723, macro_f1=0.8516, weighted_f1=0.8725
+Epoch 132/200 | train 0.8987 | val 0.8533 | val_loss 0.5408
+Test @ epoch 132: accuracy=0.8675, macro_f1=0.8481, weighted_f1=0.8678
+Epoch 133/200 | train 0.8980 | val 0.8511 | val_loss 0.5383
+Test @ epoch 133: accuracy=0.8658, macro_f1=0.8450, weighted_f1=0.8661
+Epoch 134/200 | train 0.8926 | val 0.8511 | val_loss 0.5423
+Test @ epoch 134: accuracy=0.8688, macro_f1=0.8478, weighted_f1=0.8691
+Epoch 135/200 | train 0.8968 | val 0.8537 | val_loss 0.5427
+Test @ epoch 135: accuracy=0.8688, macro_f1=0.8490, weighted_f1=0.8692
+Epoch 136/200 | train 0.8967 | val 0.8559 | val_loss 0.5344
+Test @ epoch 136: accuracy=0.8727, macro_f1=0.8527, weighted_f1=0.8729
+Epoch 137/200 | train 0.8967 | val 0.8559 | val_loss 0.5345
+Test @ epoch 137: accuracy=0.8714, macro_f1=0.8505, weighted_f1=0.8717
+Epoch 138/200 | train 0.9007 | val 0.8576 | val_loss 0.5377
+Test @ epoch 138: accuracy=0.8692, macro_f1=0.8512, weighted_f1=0.8699
+Epoch 139/200 | train 0.9002 | val 0.8554 | val_loss 0.5324
+Test @ epoch 139: accuracy=0.8740, macro_f1=0.8528, weighted_f1=0.8741
+Epoch 140/200 | train 0.8997 | val 0.8520 | val_loss 0.5384
+Test @ epoch 140: accuracy=0.8718, macro_f1=0.8525, weighted_f1=0.8723
+Epoch 141/200 | train 0.8988 | val 0.8524 | val_loss 0.5394
+Test @ epoch 141: accuracy=0.8692, macro_f1=0.8470, weighted_f1=0.8696
+Epoch 142/200 | train 0.8947 | val 0.8537 | val_loss 0.5330
+Test @ epoch 142: accuracy=0.8723, macro_f1=0.8524, weighted_f1=0.8724
+Epoch 143/200 | train 0.8977 | val 0.8589 | val_loss 0.5380
+Test @ epoch 143: accuracy=0.8735, macro_f1=0.8521, weighted_f1=0.8738
+Epoch 144/200 | train 0.8956 | val 0.8554 | val_loss 0.5385
+Test @ epoch 144: accuracy=0.8697, macro_f1=0.8501, weighted_f1=0.8702
+Epoch 145/200 | train 0.9000 | val 0.8533 | val_loss 0.5348
+Test @ epoch 145: accuracy=0.8744, macro_f1=0.8544, weighted_f1=0.8748
+Epoch 146/200 | train 0.8952 | val 0.8546 | val_loss 0.5328
+Test @ epoch 146: accuracy=0.8701, macro_f1=0.8505, weighted_f1=0.8706
+Epoch 147/200 | train 0.9014 | val 0.8550 | val_loss 0.5360
+Test @ epoch 147: accuracy=0.8701, macro_f1=0.8491, weighted_f1=0.8704
+Epoch 148/200 | train 0.9007 | val 0.8584 | val_loss 0.5330
+Test @ epoch 148: accuracy=0.8680, macro_f1=0.8461, weighted_f1=0.8683
+Epoch 149/200 | train 0.8981 | val 0.8576 | val_loss 0.5334
+Test @ epoch 149: accuracy=0.8723, macro_f1=0.8501, weighted_f1=0.8723
+Epoch 150/200 | train 0.8979 | val 0.8550 | val_loss 0.5438
+Test @ epoch 150: accuracy=0.8675, macro_f1=0.8491, weighted_f1=0.8684
+Epoch 151/200 | train 0.9006 | val 0.8550 | val_loss 0.5420
+Test @ epoch 151: accuracy=0.8718, macro_f1=0.8526, weighted_f1=0.8723
+Epoch 152/200 | train 0.8981 | val 0.8524 | val_loss 0.5388
+Test @ epoch 152: accuracy=0.8697, macro_f1=0.8498, weighted_f1=0.8703
+Epoch 153/200 | train 0.9010 | val 0.8554 | val_loss 0.5404
+Test @ epoch 153: accuracy=0.8718, macro_f1=0.8521, weighted_f1=0.8723
+Epoch 154/200 | train 0.9001 | val 0.8503 | val_loss 0.5376
+Test @ epoch 154: accuracy=0.8692, macro_f1=0.8507, weighted_f1=0.8700
+Epoch 155/200 | train 0.9026 | val 0.8524 | val_loss 0.5370
+Test @ epoch 155: accuracy=0.8710, macro_f1=0.8501, weighted_f1=0.8712
+Epoch 156/200 | train 0.8986 | val 0.8554 | val_loss 0.5395
+Test @ epoch 156: accuracy=0.8675, macro_f1=0.8455, weighted_f1=0.8678
+Epoch 157/200 | train 0.8988 | val 0.8511 | val_loss 0.5388
+Test @ epoch 157: accuracy=0.8658, macro_f1=0.8455, weighted_f1=0.8663
+Epoch 158/200 | train 0.9003 | val 0.8576 | val_loss 0.5424
+Test @ epoch 158: accuracy=0.8731, macro_f1=0.8514, weighted_f1=0.8732
+Epoch 159/200 | train 0.8995 | val 0.8533 | val_loss 0.5331
+Test @ epoch 159: accuracy=0.8740, macro_f1=0.8536, weighted_f1=0.8743
+Epoch 160/200 | train 0.8998 | val 0.8554 | val_loss 0.5337
+Test @ epoch 160: accuracy=0.8714, macro_f1=0.8509, weighted_f1=0.8714
+Epoch 161/200 | train 0.9047 | val 0.8546 | val_loss 0.5389
+Test @ epoch 161: accuracy=0.8753, macro_f1=0.8549, weighted_f1=0.8750
+Epoch 162/200 | train 0.9028 | val 0.8584 | val_loss 0.5336
+Test @ epoch 162: accuracy=0.8727, macro_f1=0.8524, weighted_f1=0.8727
+Epoch 163/200 | train 0.8991 | val 0.8546 | val_loss 0.5349
+Test @ epoch 163: accuracy=0.8714, macro_f1=0.8512, weighted_f1=0.8714
+Epoch 164/200 | train 0.9010 | val 0.8533 | val_loss 0.5392
+Test @ epoch 164: accuracy=0.8731, macro_f1=0.8531, weighted_f1=0.8735
+Epoch 165/200 | train 0.8958 | val 0.8541 | val_loss 0.5437
+Test @ epoch 165: accuracy=0.8688, macro_f1=0.8504, weighted_f1=0.8695
+Epoch 166/200 | train 0.8934 | val 0.8546 | val_loss 0.5362
+Test @ epoch 166: accuracy=0.8735, macro_f1=0.8527, weighted_f1=0.8737
+Epoch 167/200 | train 0.8986 | val 0.8524 | val_loss 0.5397
+Test @ epoch 167: accuracy=0.8701, macro_f1=0.8499, weighted_f1=0.8705
+Epoch 168/200 | train 0.8991 | val 0.8524 | val_loss 0.5383
+Test @ epoch 168: accuracy=0.8705, macro_f1=0.8513, weighted_f1=0.8713
+Epoch 169/200 | train 0.8998 | val 0.8528 | val_loss 0.5373
+Test @ epoch 169: accuracy=0.8667, macro_f1=0.8483, weighted_f1=0.8669
+Epoch 170/200 | train 0.9000 | val 0.8546 | val_loss 0.5321
+Test @ epoch 170: accuracy=0.8714, macro_f1=0.8512, weighted_f1=0.8718
+Epoch 171/200 | train 0.9016 | val 0.8528 | val_loss 0.5369
+Test @ epoch 171: accuracy=0.8697, macro_f1=0.8490, weighted_f1=0.8701
+Epoch 172/200 | train 0.9005 | val 0.8520 | val_loss 0.5374
+Test @ epoch 172: accuracy=0.8714, macro_f1=0.8517, weighted_f1=0.8721
+Epoch 173/200 | train 0.9024 | val 0.8498 | val_loss 0.5414
+Test @ epoch 173: accuracy=0.8649, macro_f1=0.8452, weighted_f1=0.8653
+Epoch 174/200 | train 0.8975 | val 0.8541 | val_loss 0.5379
+Test @ epoch 174: accuracy=0.8740, macro_f1=0.8556, weighted_f1=0.8746
+Epoch 175/200 | train 0.8991 | val 0.8559 | val_loss 0.5315
+Test @ epoch 175: accuracy=0.8735, macro_f1=0.8522, weighted_f1=0.8738
+Epoch 176/200 | train 0.9029 | val 0.8546 | val_loss 0.5341
+Test @ epoch 176: accuracy=0.8723, macro_f1=0.8534, weighted_f1=0.8727
+Epoch 177/200 | train 0.8987 | val 0.8537 | val_loss 0.5367
+Test @ epoch 177: accuracy=0.8761, macro_f1=0.8545, weighted_f1=0.8759
+Epoch 178/200 | train 0.9006 | val 0.8546 | val_loss 0.5344
+Test @ epoch 178: accuracy=0.8723, macro_f1=0.8525, weighted_f1=0.8726
+Epoch 179/200 | train 0.9010 | val 0.8528 | val_loss 0.5432
+Test @ epoch 179: accuracy=0.8658, macro_f1=0.8483, weighted_f1=0.8668
+Epoch 180/200 | train 0.9020 | val 0.8567 | val_loss 0.5401
+Test @ epoch 180: accuracy=0.8766, macro_f1=0.8557, weighted_f1=0.8770
+Epoch 181/200 | train 0.8999 | val 0.8563 | val_loss 0.5409
+Test @ epoch 181: accuracy=0.8744, macro_f1=0.8548, weighted_f1=0.8747
+Epoch 182/200 | train 0.8988 | val 0.8589 | val_loss 0.5380
+Test @ epoch 182: accuracy=0.8727, macro_f1=0.8515, weighted_f1=0.8730
+Epoch 183/200 | train 0.9043 | val 0.8563 | val_loss 0.5358
+Test @ epoch 183: accuracy=0.8744, macro_f1=0.8532, weighted_f1=0.8748
+Epoch 184/200 | train 0.9004 | val 0.8584 | val_loss 0.5314
+Test @ epoch 184: accuracy=0.8744, macro_f1=0.8543, weighted_f1=0.8752
+Epoch 185/200 | train 0.9068 | val 0.8524 | val_loss 0.5399
+Test @ epoch 185: accuracy=0.8710, macro_f1=0.8504, weighted_f1=0.8715
+Epoch 186/200 | train 0.8991 | val 0.8554 | val_loss 0.5335
+Test @ epoch 186: accuracy=0.8714, macro_f1=0.8521, weighted_f1=0.8721
+Epoch 187/200 | train 0.9003 | val 0.8576 | val_loss 0.5292
+Test @ epoch 187: accuracy=0.8718, macro_f1=0.8525, weighted_f1=0.8719
+Epoch 188/200 | train 0.9006 | val 0.8571 | val_loss 0.5350
+Test @ epoch 188: accuracy=0.8748, macro_f1=0.8559, weighted_f1=0.8755
+Epoch 189/200 | train 0.8991 | val 0.8515 | val_loss 0.5335
+Test @ epoch 189: accuracy=0.8688, macro_f1=0.8503, weighted_f1=0.8696
+Epoch 190/200 | train 0.9013 | val 0.8589 | val_loss 0.5335
+Test @ epoch 190: accuracy=0.8753, macro_f1=0.8555, weighted_f1=0.8757
+Epoch 191/200 | train 0.8990 | val 0.8541 | val_loss 0.5455
+Test @ epoch 191: accuracy=0.8701, macro_f1=0.8520, weighted_f1=0.8710
+Epoch 192/200 | train 0.9017 | val 0.8593 | val_loss 0.5305
+Test @ epoch 192: accuracy=0.8766, macro_f1=0.8573, weighted_f1=0.8769
+Epoch 193/200 | train 0.9034 | val 0.8528 | val_loss 0.5365
+Test @ epoch 193: accuracy=0.8753, macro_f1=0.8557, weighted_f1=0.8757
+Epoch 194/200 | train 0.9002 | val 0.8550 | val_loss 0.5364
+Test @ epoch 194: accuracy=0.8748, macro_f1=0.8547, weighted_f1=0.8749
+Epoch 195/200 | train 0.9020 | val 0.8597 | val_loss 0.5390
+Test @ epoch 195: accuracy=0.8778, macro_f1=0.8581, weighted_f1=0.8782
+Epoch 196/200 | train 0.9015 | val 0.8589 | val_loss 0.5419
+Test @ epoch 196: accuracy=0.8723, macro_f1=0.8538, weighted_f1=0.8731
+Epoch 197/200 | train 0.9045 | val 0.8567 | val_loss 0.5379
+Test @ epoch 197: accuracy=0.8753, macro_f1=0.8548, weighted_f1=0.8757
+Epoch 198/200 | train 0.8997 | val 0.8567 | val_loss 0.5325
+Test @ epoch 198: accuracy=0.8723, macro_f1=0.8516, weighted_f1=0.8725
+Epoch 199/200 | train 0.9053 | val 0.8541 | val_loss 0.5354
+Test @ epoch 199: accuracy=0.8688, macro_f1=0.8490, weighted_f1=0.8691
+Epoch 200/200 | train 0.9014 | val 0.8563 | val_loss 0.5407
+Test @ epoch 200: accuracy=0.8701, macro_f1=0.8507, weighted_f1=0.8705
+Checkpoint tốt nhất: epoch 187 | test accuracy=0.8718 | macro_f1=0.8525 | weighted_f1=0.8719
+Đã lưu kết quả vào: /mnt/store/anguy122/code/deep_learning-waste_classification/artifacts/complex_cnn_parallel_stem_seed42
