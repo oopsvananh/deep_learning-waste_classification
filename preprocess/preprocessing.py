@@ -1,8 +1,5 @@
 from pathlib import Path
 import hashlib
-import random
-
-import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
@@ -21,14 +18,14 @@ CLASSES = [
 ]
 CLASS_TO_INDEX = {name: i for i, name in enumerate(CLASSES)}
 
-# những ảnh bị gán sai nhãn, đã xem bằng mắt ở bước EDA
+# images with wrong labels, checked by eye in the EDA step
 LABEL_CORRECTIONS = {
     'metal/metal459.jpg': 'white-glass',
     'plastic/plastic159.jpg': 'white-glass',
     'white-glass/white-glass761.jpg': 'plastic',
 }
 
-# xác suất và mức độ của từng phép augmentation
+# probability and strength of each augmentation
 HFLIP_P = 0.5
 VFLIP_P = 0.2
 ROTATION_P = 0.5
@@ -44,22 +41,25 @@ CSV_DIR = project_dir / 'data'
 
 
 def set_seed(seed=SEED):
-    random.seed(seed)
-    np.random.seed(seed)
     torch.manual_seed(seed)
 
-
-# đọc danh sách ảnh, bỏ qua ảnh lỗi
+# check if an image can be opened
+def is_valid_image(path):
+    try:
+        with Image.open(path) as image:
+            image.load()
+        return True
+    except Exception:
+        return False
+    
+# read the image list, skip broken images
 def scan_images(data_dir):
     records = []
     for path in sorted(data_dir.glob('*/*')):
         if path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
             continue
-        try:
-            with Image.open(path) as image:
-                image.load()
-        except Exception:
-            print('Bỏ qua ảnh lỗi:', path)
+        if not is_valid_image(path):
+            print('Skipping broken image:', path)
             continue
         records.append({
             'filepath': path.relative_to(data_dir).as_posix(),
@@ -67,7 +67,7 @@ def scan_images(data_dir):
             'file_hash': hashlib.sha256(path.read_bytes()).hexdigest(),
         })
     data = pd.DataFrame(records)
-    print('Số ảnh đọc được:', len(data))
+    print('Images read:', len(data))
     return data
 
 
@@ -77,21 +77,23 @@ def fix_labels(data):
     return data
 
 
-# bỏ ảnh trùng, mỗi nhóm trùng chỉ giữ lại 1 ảnh
+# remove duplicate images, keep only one image per duplicate group
 def remove_duplicates(data):
-    label_count = data.groupby('file_hash')['label'].transform('nunique')
-    if (label_count > 1).any():
-        print(data[label_count > 1][['filepath', 'label']])
-        raise ValueError('Còn ảnh trùng nhưng khác nhãn, cần sửa LABEL_CORRECTIONS')
-
+    # 1. same image but different labels: stop, fix the labels first
+    n_labels = data.groupby('file_hash')['label'].transform('nunique')
+    conflict = data[n_labels > 1]
+    if len(conflict) > 0:
+        print(conflict[['filepath', 'label']])
+        raise ValueError('Duplicate images with different labels remain, fix LABEL_CORRECTIONS')
+    
     before = len(data)
     data = data.sort_values('filepath').drop_duplicates(subset='file_hash')
     data = data.reset_index(drop=True)
-    print('Số ảnh trùng đã bỏ:', before - len(data))
+    print('Duplicates removed:', before - len(data))
     return data
 
 
-# chia 70% train, 15% val, 15% test theo tỉ lệ từng lớp
+# split 70% train, 15% val, 15% test, keeping the class proportions
 def split_data(data):
     train_data, temp_data = train_test_split(
         data, test_size=0.3, stratify=data['label'], random_state=SEED)
@@ -118,7 +120,7 @@ def run_preprocessing():
     save_splits(train_data, val_data, test_data)
 
 
-# trọng số lớp tính từ tập train, dùng cho CrossEntropyLoss(weight=...)
+# class weights computed from the train set, used for CrossEntropyLoss(weight=...)
 def compute_class_weights():
     labels = pd.read_csv(CSV_DIR / 'train' / 'train.csv')['label']
     counts = labels.value_counts().reindex(CLASSES)
@@ -126,24 +128,21 @@ def compute_class_weights():
     return torch.tensor(weights, dtype=torch.float32)
 
 
-# resize giữ tỉ lệ, phần thiếu thêm viền đen cho thành ảnh vuông
-class ResizeWithPad:
-    def __init__(self, size):
-        self.size = size
+# resize keeping the aspect ratio, pad with black borders to make a square image
+def resize_with_pad(image, size):
+    width, height = image.size
+    scale = size / max(width, height)
+    new_width = max(1, round(width * scale))
+    new_height = max(1, round(height * scale))
+    image = image.resize((new_width, new_height), Image.BILINEAR)
 
-    def __call__(self, image):
-        width, height = image.size
-        scale = self.size / max(width, height)
-        new_width = max(1, round(width * scale))
-        new_height = max(1, round(height * scale))
-        image = image.resize((new_width, new_height), Image.BILINEAR)
+    result = Image.new('RGB', (size, size), (0, 0, 0))
+    left = (size - new_width) // 2
+    top = (size - new_height) // 2
+    result.paste(image, (left, top))
+    return result
 
-        result = Image.new('RGB', (self.size, self.size), (0, 0, 0))
-        result.paste(image, ((self.size - new_width) // 2, (self.size - new_height) // 2))
-        return result
-
-
-# augmentation chỉ dùng cho tập train, mỗi phép có xác suất riêng
+# augmentation is only used for the train set, each one has its own probability
 def build_augmentation():
     return transforms.Compose([
         transforms.RandomHorizontalFlip(p=HFLIP_P),
@@ -159,13 +158,12 @@ def build_augmentation():
         ], p=CONTRAST_P),
     ])
 
-
 class GarbageDataset(Dataset):
     def __init__(self, csv_path, img_size=IMG_SIZE, training=False):
         data = pd.read_csv(csv_path)
         self.filepaths = data['filepath'].tolist()
         self.labels = data['label'].map(CLASS_TO_INDEX).tolist()
-        self.resize = ResizeWithPad(img_size)
+        self.img_size = img_size
         self.to_tensor = transforms.ToTensor()
         self.augmentation = build_augmentation() if training else None
 
@@ -173,15 +171,16 @@ class GarbageDataset(Dataset):
         return len(self.filepaths)
 
     def __getitem__(self, index):
-        # 1. đọc ảnh
+        # 1. read the image
         path = DATA_DIR / self.filepaths[index]
-        image = Image.open(path).convert('RGB')
+        with Image.open(path) as image:
+            image = image.convert('RGB')
         # 2. resize
-        image = self.resize(image)
-        # 3. augmentation (chỉ tập train)
+        image = resize_with_pad(image, self.img_size)
+        # 3. augmentation (train set only)
         if self.augmentation is not None:
             image = self.augmentation(image)
-        # 4. chuyển thành tensor, pixel về [0, 1]
+        # 4. convert to tensor, pixels scaled to [0, 1]
         image = self.to_tensor(image)
         return image, self.labels[index]
 
@@ -206,4 +205,4 @@ if __name__ == '__main__':
         images, labels = next(iter(loader))
         print(name, '| Shape:', tuple(images.shape), '| Pixel:', images.min().item(), '-', images.max().item())
 
-    print('Trọng số lớp:', compute_class_weights())
+    print('Class weights:', compute_class_weights())
