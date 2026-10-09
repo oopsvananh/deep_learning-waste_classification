@@ -228,12 +228,20 @@ Parallel stem có `1,282,532` tham số và được train 200 epoch với seed 
 `224x224`, batch size 32 và learning rate `1e-4`. Checkpoint epoch 187 được chọn
 chỉ bằng validation loss, sau đó mới dùng để tính kết quả test chính thức.
 
+Lượt chạy chính thức được thực hiện trên node `viu1`, dùng một NVIDIA RTX A6000
+48 GB (GPU 3). CPU của node là 2 x Intel Xeon Gold 5320 2.20 GHz, tổng cộng 52
+cores/104 threads; DataLoader dùng 2 workers. Toàn bộ process, gồm khởi tạo,
+200 epoch, đánh giá checkpoint cuối và lưu kết quả, chạy từ
+`2026-10-06 22:31:59 EDT` đến `2026-10-07 00:26:16 EDT`: **1 giờ 54 phút 17
+giây** wall-clock.
+
 | Seed | Epoch được chọn | Test accuracy | Macro-F1 | Weighted-F1 |
 | ---: | ---: | ---: | ---: | ---: |
 | 42 | 187 | 87.18% | 85.25% | 87.19% |
 
 Full training log gồm train, validation và test metrics của toàn bộ 200 epoch
-nằm tại `artifacts/logs/complex_cnn_parallel_stem_seed42.log`.
+nằm tại `artifacts/logs/complex_cnn_parallel_stem_seed42.log`; phần đầu log ghi
+lại phần cứng và thời gian của run.
 
 ## Nguồn và phạm vi sử dụng
 
