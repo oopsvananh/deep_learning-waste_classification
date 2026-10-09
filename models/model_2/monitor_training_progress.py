@@ -2,8 +2,8 @@
 
 Ví dụ:
     python models/model_2/monitor_training_progress.py \
-        --run seed42=artifacts/complex_cnn_seed42 \
-        --run seed43=artifacts/complex_cnn_seed43
+        --run run1=artifacts/complex_cnn_run1 \
+        --run run2=artifacts/complex_cnn_run2
 """
 
 import argparse
@@ -66,6 +66,22 @@ def make_bar(current, total, width=40):
     return "[" + "#" * completed + "-" * (width - completed) + "]"
 
 
+def format_test_metrics(row):
+    """Đọc được cả format bốn metrics mới và các run cũ."""
+    if "accuracy" in row:
+        return (
+            f"accuracy={float(row['accuracy']):.4f}  "
+            f"precision={float(row['precision']):.4f}  "
+            f"recall={float(row['recall']):.4f}  "
+            f"f1={float(row['f1_score']):.4f}"
+        )
+    return (
+        f"accuracy={float(row['test_accuracy']):.4f}  "
+        f"macro_f1={float(row['test_macro_f1']):.4f}  "
+        f"weighted_f1={float(row['test_weighted_f1']):.4f}"
+    )
+
+
 def format_run(name, run_dir, total_epochs, test_frequency):
     row = read_last_csv_row(run_dir / "training_history.csv")
     if row is None:
@@ -91,9 +107,7 @@ def format_run(name, run_dir, total_epochs, test_frequency):
     else:
         lines.append(
             f"  test@{int(test_row['epoch'])}: "
-            f"accuracy={float(test_row['test_accuracy']):.4f}  "
-            f"macro_f1={float(test_row['test_macro_f1']):.4f}  "
-            f"weighted_f1={float(test_row['test_weighted_f1']):.4f}  "
+            f"{format_test_metrics(test_row)}  "
             f"next_test_epoch={next_test_epoch}"
         )
     return "\n".join(lines)
@@ -118,11 +132,7 @@ def format_history(name, run_dir, total_epochs):
         )
         test_row = tests_by_epoch.get(epoch)
         if test_row is not None:
-            line += (
-                f"  test={float(test_row['test_accuracy']):.4f}  "
-                f"macro_f1={float(test_row['test_macro_f1']):.4f}  "
-                f"weighted_f1={float(test_row['test_weighted_f1']):.4f}"
-            )
+            line += f"  test: {format_test_metrics(test_row)}"
         lines.append(line)
     return "\n".join(lines)
 

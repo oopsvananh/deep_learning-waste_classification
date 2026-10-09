@@ -1,5 +1,6 @@
 from pathlib import Path
 import hashlib
+
 import pandas as pd
 import torch
 from PIL import Image
@@ -7,7 +8,6 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
-SEED = 42
 IMG_SIZE = 224
 BATCH_SIZE = 32
 
@@ -39,9 +39,6 @@ project_dir = Path(__file__).resolve().parent.parent
 DATA_DIR = project_dir / 'data' / 'raw' / 'garbage_classification'
 CSV_DIR = project_dir / 'data'
 
-
-def set_seed(seed=SEED):
-    torch.manual_seed(seed)
 
 # check if an image can be opened
 def is_valid_image(path):
@@ -96,9 +93,9 @@ def remove_duplicates(data):
 # split 70% train, 15% val, 15% test, keeping the class proportions
 def split_data(data):
     train_data, temp_data = train_test_split(
-        data, test_size=0.3, stratify=data['label'], random_state=SEED)
+        data, test_size=0.3, stratify=data['label'])
     val_data, test_data = train_test_split(
-        temp_data, test_size=0.5, stratify=temp_data['label'], random_state=SEED)
+        temp_data, test_size=0.5, stratify=temp_data['label'])
     print('Train:', len(train_data), '| Val:', len(val_data), '| Test:', len(test_data))
     return train_data, val_data, test_data
 
@@ -121,8 +118,9 @@ def run_preprocessing():
 
 
 # class weights computed from the train set, used for CrossEntropyLoss(weight=...)
-def compute_class_weights():
-    labels = pd.read_csv(CSV_DIR / 'train' / 'train.csv')['label']
+def compute_class_weights(train_csv_path=None):
+    train_csv_path = Path(train_csv_path or CSV_DIR / 'train' / 'train.csv')
+    labels = pd.read_csv(train_csv_path)['label']
     counts = labels.value_counts().reindex(CLASSES)
     weights = len(labels) / (len(CLASSES) * counts.to_numpy())
     return torch.tensor(weights, dtype=torch.float32)
@@ -159,10 +157,11 @@ def build_augmentation():
     ])
 
 class GarbageDataset(Dataset):
-    def __init__(self, csv_path, img_size=IMG_SIZE, training=False):
+    def __init__(self, csv_path, img_size=IMG_SIZE, training=False, data_dir=None):
         data = pd.read_csv(csv_path)
         self.filepaths = data['filepath'].tolist()
         self.labels = data['label'].map(CLASS_TO_INDEX).tolist()
+        self.data_dir = Path(data_dir or DATA_DIR)
         self.img_size = img_size
         self.to_tensor = transforms.ToTensor()
         self.augmentation = build_augmentation() if training else None
@@ -172,7 +171,7 @@ class GarbageDataset(Dataset):
 
     def __getitem__(self, index):
         # 1. read the image
-        path = DATA_DIR / self.filepaths[index]
+        path = self.data_dir / self.filepaths[index]
         with Image.open(path) as image:
             image = image.convert('RGB')
         # 2. resize
@@ -185,15 +184,28 @@ class GarbageDataset(Dataset):
         return image, self.labels[index]
 
 
-def make_dataloaders(img_size=IMG_SIZE, batch_size=BATCH_SIZE, num_workers=0):
-    set_seed()
-    train_data = GarbageDataset(CSV_DIR / 'train' / 'train.csv', img_size, training=True)
-    val_data = GarbageDataset(CSV_DIR / 'val' / 'val.csv', img_size)
-    test_data = GarbageDataset(CSV_DIR / 'test' / 'test.csv', img_size)
+def make_dataloaders(img_size=IMG_SIZE, batch_size=BATCH_SIZE, num_workers=2,
+                     data_dir=None, csv_dir=None):
+    """Tạo ba DataLoader; chỉ tập train được shuffle và augmentation."""
+    data_dir = Path(data_dir or DATA_DIR)
+    csv_dir = Path(csv_dir or CSV_DIR)
 
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    train_data = GarbageDataset(
+        csv_dir / 'train' / 'train.csv', img_size, training=True, data_dir=data_dir)
+    val_data = GarbageDataset(
+        csv_dir / 'val' / 'val.csv', img_size, data_dir=data_dir)
+    test_data = GarbageDataset(
+        csv_dir / 'test' / 'test.csv', img_size, data_dir=data_dir)
+
+    loader_options = {
+        'batch_size': batch_size,
+        'num_workers': num_workers,
+        'pin_memory': torch.cuda.is_available(),
+        'persistent_workers': num_workers > 0,
+    }
+    train_loader = DataLoader(train_data, shuffle=True, **loader_options)
+    val_loader = DataLoader(val_data, shuffle=False, **loader_options)
+    test_loader = DataLoader(test_data, shuffle=False, **loader_options)
     return train_loader, val_loader, test_loader
 
 

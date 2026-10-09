@@ -11,7 +11,11 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+    precision_recall_fscore_support,
+)
 from torch import nn
 
 
@@ -22,7 +26,6 @@ from preprocess.preprocessing import (  # noqa: E402
     CLASSES,
     compute_class_weights,
     make_dataloaders,
-    seed_everything,
 )
 
 
@@ -34,7 +37,6 @@ def parse_args():
     parser.add_argument("--image-size", type=int, default=224)
     parser.add_argument("--test-frequency", type=int, default=1)
     parser.add_argument("--num-workers", type=int, default=2)
-    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--data-dir",
         type=Path,
@@ -55,8 +57,8 @@ def parse_args():
     return parser.parse_args()
 
 
-class ConvBlock(nn.Module):
-    """Convolution, sau đó là BatchNorm và ReLU."""
+class ConvBatchNormReLU(nn.Module):
+    """Ba lớp thường đi cùng nhau: Conv2d, BatchNorm2d, rồi ReLU."""
 
     def __init__(self, in_channels, out_channels, kernel_size=3):
         super().__init__()
@@ -82,9 +84,9 @@ class ParallelStem(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.branch_3x3 = ConvBlock(3, 6, kernel_size=3)
-        self.branch_5x5 = ConvBlock(3, 5, kernel_size=5)
-        self.branch_7x7 = ConvBlock(3, 5, kernel_size=7)
+        self.branch_3x3 = ConvBatchNormReLU(3, 6, kernel_size=3)
+        self.branch_5x5 = ConvBatchNormReLU(3, 5, kernel_size=5)
+        self.branch_7x7 = ConvBatchNormReLU(3, 5, kernel_size=7)
 
     def forward(self, x):
         features = [
@@ -102,8 +104,8 @@ class ResidualBlock(nn.Module):
         super().__init__()
         expanded_channels = channels * 2
 
-        self.spatial = ConvBlock(channels, channels)
-        self.expand = ConvBlock(channels, expanded_channels)
+        self.spatial = ConvBatchNormReLU(channels, channels)
+        self.expand = ConvBatchNormReLU(channels, expanded_channels)
         self.shrink = nn.Sequential(
             nn.Conv2d(
                 expanded_channels,
@@ -134,14 +136,14 @@ class ComplexCNN(nn.Module):
             ParallelStem(),
             ResidualBlock(16),
             nn.MaxPool2d(kernel_size=2),
-            ConvBlock(16, 32),
+            ConvBatchNormReLU(16, 32),
             ResidualBlock(32),
             nn.MaxPool2d(kernel_size=2),
-            ConvBlock(32, 64),
+            ConvBatchNormReLU(32, 64),
             ResidualBlock(64),
             ResidualBlock(64),
             nn.MaxPool2d(kernel_size=2),
-            ConvBlock(64, 128),
+            ConvBatchNormReLU(64, 128),
             ResidualBlock(128),
         )
 
@@ -159,10 +161,40 @@ class ComplexCNN(nn.Module):
         return self.classifier(x)
 
 
-def run_epoch(model, loader, loss_fn, device, optimizer=None):
-    """Chạy một epoch train hoặc evaluation."""
-    training = optimizer is not None
-    model.train(training)
+def train_one_epoch(model, loader, loss_fn, optimizer, device):
+    """Học một epoch: dự đoán, tính loss, rồi cập nhật model."""
+    model.train()
+
+    total_loss = 0.0
+    total_correct = 0
+    total_images = 0
+
+    for images, labels in loader:
+        images = images.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
+
+        optimizer.zero_grad(set_to_none=True)
+        logits = model(images)              # 1. Model dự đoán
+        loss = loss_fn(logits, labels)       # 2. So sánh với nhãn đúng
+        loss.backward()                     # 3. Tính gradient
+        optimizer.step()                    # 4. Cập nhật model
+
+        predictions = logits.argmax(dim=1)
+        batch_size = labels.size(0)
+        total_loss += loss.item() * batch_size
+        total_correct += (predictions == labels).sum().item()
+        total_images += batch_size
+
+    return {
+        "loss": total_loss / total_images,
+        "accuracy": total_correct / total_images,
+    }
+
+
+@torch.no_grad()
+def evaluate(model, loader, loss_fn, device):
+    """Đánh giá model; không tính gradient và không cập nhật weights."""
+    model.eval()
 
     total_loss = 0.0
     total_correct = 0
@@ -170,28 +202,20 @@ def run_epoch(model, loader, loss_fn, device, optimizer=None):
     all_labels = []
     all_predictions = []
 
-    with torch.set_grad_enabled(training):
-        for images, labels in loader:
-            images = images.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
+    for images, labels in loader:
+        images = images.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
 
-            if training:
-                optimizer.zero_grad(set_to_none=True)
+        logits = model(images)
+        loss = loss_fn(logits, labels)
+        predictions = logits.argmax(dim=1)
 
-            logits = model(images)
-            loss = loss_fn(logits, labels)
-
-            if training:
-                loss.backward()
-                optimizer.step()
-
-            predictions = logits.argmax(dim=1)
-            batch_size = labels.size(0)
-            total_loss += loss.item() * batch_size
-            total_correct += (predictions == labels).sum().item()
-            total_images += batch_size
-            all_labels.extend(labels.cpu().tolist())
-            all_predictions.extend(predictions.cpu().tolist())
+        batch_size = labels.size(0)
+        total_loss += loss.item() * batch_size
+        total_correct += (predictions == labels).sum().item()
+        total_images += batch_size
+        all_labels.extend(labels.cpu().tolist())
+        all_predictions.extend(predictions.cpu().tolist())
 
     return {
         "loss": total_loss / total_images,
@@ -202,18 +226,18 @@ def run_epoch(model, loader, loss_fn, device, optimizer=None):
 
 
 def classification_metrics(result):
-    report = classification_report(
+    precision, recall, f1_score, _ = precision_recall_fscore_support(
         result["labels"],
         result["predictions"],
         labels=list(range(len(CLASSES))),
-        target_names=CLASSES,
-        output_dict=True,
+        average="macro",
         zero_division=0,
     )
     return {
-        "test_accuracy": report["accuracy"],
-        "test_macro_f1": report["macro avg"]["f1-score"],
-        "test_weighted_f1": report["weighted avg"]["f1-score"],
+        "accuracy": result["accuracy"],
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1_score,
     }
 
 
@@ -234,8 +258,6 @@ def main():
         raise ValueError("--test-frequency phải lớn hơn hoặc bằng 1")
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    seed_everything(args.seed)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Thiết bị: {device}")
     print(f"Kích thước ảnh: {args.image_size} | Batch size: {args.batch_size}")
@@ -243,7 +265,6 @@ def main():
     train_loader, val_loader, test_loader = make_dataloaders(
         img_size=args.image_size,
         batch_size=args.batch_size,
-        seed=args.seed,
         num_workers=args.num_workers,
         data_dir=args.data_dir,
         csv_dir=args.csv_dir,
@@ -269,8 +290,9 @@ def main():
     test_history = []
 
     for epoch in range(1, args.epochs + 1):
-        train_result = run_epoch(model, train_loader, loss_fn, device, optimizer)
-        val_result = run_epoch(model, val_loader, loss_fn, device)
+        train_result = train_one_epoch(
+            model, train_loader, loss_fn, optimizer, device)
+        val_result = evaluate(model, val_loader, loss_fn, device)
         scheduler.step(val_result["loss"])
 
         row = {
@@ -296,20 +318,21 @@ def main():
         )
 
         if epoch % args.test_frequency == 0:
-            test_result = run_epoch(model, test_loader, loss_fn, device)
+            test_result = evaluate(model, test_loader, loss_fn, device)
             test_row = {"epoch": epoch, **classification_metrics(test_result)}
             test_history.append(test_row)
             pd.DataFrame(test_history).to_csv(test_history_path, index=False)
             print(
                 f"Test @ epoch {epoch}: "
-                f"accuracy={test_row['test_accuracy']:.4f}, "
-                f"macro_f1={test_row['test_macro_f1']:.4f}, "
-                f"weighted_f1={test_row['test_weighted_f1']:.4f}"
+                f"Accuracy={test_row['accuracy']:.2%} | "
+                f"Precision={test_row['precision']:.2%} | "
+                f"Recall={test_row['recall']:.2%} | "
+                f"F1-score={test_row['f1_score']:.2%}"
             )
 
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
     model.load_state_dict(checkpoint["model_state_dict"])
-    final_test = run_epoch(model, test_loader, loss_fn, device)
+    final_test = evaluate(model, test_loader, loss_fn, device)
     final_metrics = classification_metrics(final_test)
     final_report = classification_report(
         final_test["labels"],
@@ -341,9 +364,10 @@ def main():
 
     print(
         f"Checkpoint tốt nhất: epoch {checkpoint['epoch']} | "
-        f"test accuracy={final_metrics['test_accuracy']:.4f} | "
-        f"macro_f1={final_metrics['test_macro_f1']:.4f} | "
-        f"weighted_f1={final_metrics['test_weighted_f1']:.4f}"
+        f"Accuracy={final_metrics['accuracy']:.2%} | "
+        f"Precision={final_metrics['precision']:.2%} | "
+        f"Recall={final_metrics['recall']:.2%} | "
+        f"F1-score={final_metrics['f1_score']:.2%}"
     )
     print(f"Đã lưu kết quả vào: {args.output_dir}")
 

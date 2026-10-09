@@ -115,9 +115,9 @@ padding phù hợp nên đều trả về feature map `224x224`; model nối cá
 chiều channels để tạo 16 channels cho stage đầu tiên.
 
 ```python
-branch_3x3 = ConvBlock(3, 6, kernel_size=3)
-branch_5x5 = ConvBlock(3, 5, kernel_size=5)
-branch_7x7 = ConvBlock(3, 5, kernel_size=7)
+branch_3x3 = ConvBatchNormReLU(3, 6, kernel_size=3)
+branch_5x5 = ConvBatchNormReLU(3, 5, kernel_size=5)
+branch_7x7 = ConvBatchNormReLU(3, 5, kernel_size=7)
 
 output = torch.cat(
     [branch_3x3(x), branch_5x5(x), branch_7x7(x)],
@@ -164,8 +164,8 @@ Global average pooling chỉ tạo 128 giá trị, nên phần phân loại cầ
 hơn và giảm nguy cơ ghi nhớ quá chi tiết vị trí của ảnh train.
 
 Complex CNN được so sánh với Simple CNN trên cùng train/validation/test split,
-augmentation, class weight và seed. Validation được dùng để chọn checkpoint;
-test được đo định kỳ để theo dõi accuracy và F1.
+augmentation và class weight. Validation được dùng để chọn checkpoint; test
+không được dùng để chọn model.
 
 Code PyTorch để định nghĩa, huấn luyện và đánh giá model nằm tại
 `models/model_2/train_complex_cnn.py`. Chạy từ thư mục gốc của repository:
@@ -174,25 +174,25 @@ Code PyTorch để định nghĩa, huấn luyện và đánh giá model nằm t�
 python models/model_2/train_complex_cnn.py
 ```
 
-Mỗi process dùng một GPU trong `CUDA_VISIBLE_DEVICES`. Muốn thử hai seed trên
-hai GPU thì chạy hai process độc lập với hai seed và hai thư mục output khác
-nhau; mỗi model vẫn có batch size riêng là 32.
+Mỗi process dùng một GPU trong `CUDA_VISIBLE_DEVICES`; batch size mặc định của
+mỗi model là 32.
 
 Script lưu model tốt nhất, lịch sử train, classification report và confusion
 matrix vào `artifacts/complex_cnn/`.
 
 Mặc định model train đủ 200 epoch. Validation chạy sau mỗi epoch và chỉ
 `val_loss` được dùng để lưu `best_model.pt`. Test cũng được đo sau mỗi epoch và
-script ghi `Test accuracy`, `Macro-F1` và `Weighted-F1`, nhưng không dùng test
-để chọn checkpoint. Cuối cùng, checkpoint có validation loss thấp nhất được
-nạp lại để đánh giá test.
+in bốn metric: Accuracy, Macro Precision, Macro Recall và Macro F1-score. Macro
+average tính mỗi lớp ngang nhau, phù hợp khi số ảnh giữa các lớp không cân bằng.
+Cuối cùng, checkpoint có validation loss thấp nhất được nạp lại để đánh giá
+test.
 
 Chạy từ thư mục gốc của repository, thay GPU `0` nếu cần:
 
 ```sh
 CUDA_VISIBLE_DEVICES=0 python models/model_2/train_complex_cnn.py \
   --epochs 200 --test-frequency 1 --batch-size 32 --image-size 224 \
-  --learning-rate 1e-4 --seed 42 \
+  --learning-rate 1e-4 \
   --output-dir artifacts/complex_cnn
 ```
 
