@@ -57,36 +57,26 @@ def parse_args():
     return parser.parse_args()
 
 
-class ConvBatchNormReLU(nn.Module):
-    """Ba lớp thường đi cùng nhau: Conv2d, BatchNorm2d, rồi ReLU."""
-
-    def __init__(self, in_channels, out_channels, kernel_size=3):
-        super().__init__()
-        padding = kernel_size // 2
-        self.layers = nn.Sequential(
-            nn.Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size=kernel_size,
-                padding=padding,
-                bias=False,
-            ),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(),
-        )
-
-    def forward(self, x):
-        return self.layers(x)
-
-
 class ParallelStem(nn.Module):
     """Nhìn ảnh ở ba vùng 3x3, 5x5 và 7x7 rồi nối các channels."""
 
     def __init__(self):
         super().__init__()
-        self.branch_3x3 = ConvBatchNormReLU(3, 6, kernel_size=3)
-        self.branch_5x5 = ConvBatchNormReLU(3, 5, kernel_size=5)
-        self.branch_7x7 = ConvBatchNormReLU(3, 5, kernel_size=7)
+        self.branch_3x3 = nn.Sequential(
+            nn.Conv2d(3, 6, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(6),
+            nn.ReLU(),
+        )
+        self.branch_5x5 = nn.Sequential(
+            nn.Conv2d(3, 5, kernel_size=5, padding=2, bias=False),
+            nn.BatchNorm2d(5),
+            nn.ReLU(),
+        )
+        self.branch_7x7 = nn.Sequential(
+            nn.Conv2d(3, 5, kernel_size=7, padding=3, bias=False),
+            nn.BatchNorm2d(5),
+            nn.ReLU(),
+        )
 
     def forward(self, x):
         features = [
@@ -104,8 +94,28 @@ class ResidualBlock(nn.Module):
         super().__init__()
         expanded_channels = channels * 2
 
-        self.spatial = ConvBatchNormReLU(channels, channels)
-        self.expand = ConvBatchNormReLU(channels, expanded_channels)
+        self.spatial = nn.Sequential(
+            nn.Conv2d(
+                channels,
+                channels,
+                kernel_size=3,
+                padding=1,
+                bias=False,
+            ),
+            nn.BatchNorm2d(channels),
+            nn.ReLU(),
+        )
+        self.expand = nn.Sequential(
+            nn.Conv2d(
+                channels,
+                expanded_channels,
+                kernel_size=3,
+                padding=1,
+                bias=False,
+            ),
+            nn.BatchNorm2d(expanded_channels),
+            nn.ReLU(),
+        )
         self.shrink = nn.Sequential(
             nn.Conv2d(
                 expanded_channels,
@@ -136,14 +146,26 @@ class ComplexCNN(nn.Module):
             ParallelStem(),
             ResidualBlock(16),
             nn.MaxPool2d(kernel_size=2),
-            ConvBatchNormReLU(16, 32),
+            nn.Sequential(
+                nn.Conv2d(16, 32, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(32),
+                nn.ReLU(),
+            ),
             ResidualBlock(32),
             nn.MaxPool2d(kernel_size=2),
-            ConvBatchNormReLU(32, 64),
+            nn.Sequential(
+                nn.Conv2d(32, 64, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(64),
+                nn.ReLU(),
+            ),
             ResidualBlock(64),
             ResidualBlock(64),
             nn.MaxPool2d(kernel_size=2),
-            ConvBatchNormReLU(64, 128),
+            nn.Sequential(
+                nn.Conv2d(64, 128, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU(),
+            ),
             ResidualBlock(128),
         )
 

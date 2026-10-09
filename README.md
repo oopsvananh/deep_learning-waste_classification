@@ -115,9 +115,21 @@ padding phù hợp nên đều trả về feature map `224x224`; model nối cá
 chiều channels để tạo 16 channels cho stage đầu tiên.
 
 ```python
-branch_3x3 = ConvBatchNormReLU(3, 6, kernel_size=3)
-branch_5x5 = ConvBatchNormReLU(3, 5, kernel_size=5)
-branch_7x7 = ConvBatchNormReLU(3, 5, kernel_size=7)
+branch_3x3 = nn.Sequential(
+    nn.Conv2d(3, 6, kernel_size=3, padding=1, bias=False),
+    nn.BatchNorm2d(6),
+    nn.ReLU(),
+)
+branch_5x5 = nn.Sequential(
+    nn.Conv2d(3, 5, kernel_size=5, padding=2, bias=False),
+    nn.BatchNorm2d(5),
+    nn.ReLU(),
+)
+branch_7x7 = nn.Sequential(
+    nn.Conv2d(3, 5, kernel_size=7, padding=3, bias=False),
+    nn.BatchNorm2d(5),
+    nn.ReLU(),
+)
 
 output = torch.cat(
     [branch_3x3(x), branch_5x5(x), branch_7x7(x)],
