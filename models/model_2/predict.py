@@ -1,24 +1,28 @@
 """Đánh giá Complex CNN đã train trên toàn bộ tập test."""
 
+import sys
 from pathlib import Path
 
 import torch
 from torch import nn
 
-from models.model_2.train_complex_cnn import (
+
+# Thêm thư mục gốc để Python tìm được model và preprocessing trên Windows.
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_DIR))
+
+from models.model_2.train_complex_cnn import (  # noqa: E402
     ComplexCNN,
     classification_metrics,
     evaluate,
 )
-from preprocess.preprocessing import (
+from preprocess.preprocessing import (  # noqa: E402
     CLASSES,
     compute_class_weights,
     make_dataloaders,
 )
 
 
-# Path luôn được tính từ vị trí của predict.py nên dùng được trên Windows.
-PROJECT_DIR = Path(__file__).resolve().parent
 CHECKPOINT_PATH = PROJECT_DIR / "weights" / "complex_cnn_best_epoch187.pth"
 
 
