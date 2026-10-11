@@ -1,15 +1,12 @@
-
-import os
 import hashlib
 from pathlib import Path
 
 import pandas as pd
 import torch
-from PIL import Image
+from PIL import Image, ImageOps
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-
 
 # 1. Parameters
 SEED = 42
@@ -21,25 +18,13 @@ CLASSES = [
     'clothes', 'green-glass', 'metal', 'paper',
     'plastic', 'shoes', 'trash', 'white-glass'
 ]
-
-CLASS_TO_INDEX = {}
-for i, name in enumerate(CLASSES):
-    CLASS_TO_INDEX[name] = i
+CLASS_TO_INDEX = {name: i for i, name in enumerate(CLASSES)}
 
 LABEL_CORRECTIONS = {
     'metal/metal459.jpg': 'white-glass',
     'plastic/plastic159.jpg': 'white-glass',
     'white-glass/white-glass761.jpg': 'plastic'
 }
-
-HFLIP_P = 0.5
-VFLIP_P = 0.2
-ROTATION_P = 0.5
-ROTATION_DEGREES = 15
-BRIGHTNESS_P = 0.5
-BRIGHTNESS_DELTA = 0.15
-CONTRAST_P = 0.5
-CONTRAST_DELTA = 0.15
 
 project_dir = Path(__file__).resolve().parent.parent
 DATA_DIR = project_dir / 'data' / 'raw' / 'garbage_classification'
@@ -48,31 +33,23 @@ CSV_DIR = project_dir / 'data'
 torch.manual_seed(SEED)
 
 
-# 2. Read image information
-def scan_images(data_dir):
+# 2. Read image information (filepath, label, hash)
+def scan_images():
     records = []
-    for folder in sorted(data_dir.iterdir()):
-        if not folder.is_dir():
+    for img_path in sorted(DATA_DIR.glob('*/*')):
+        if img_path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
             continue
-        for img_path in sorted(folder.iterdir()):
-            if img_path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
-                continue
-            try:
-                with Image.open(img_path) as img:
-                    img.load()
-            except Exception:
-                print("Cannot open:", img_path)
-                continue
-            
-            filepath = folder.name + '/' + img_path.name # image information
-            label = folder.name
-            with open(img_path, 'rb') as f:
-                file_hash = hashlib.md5(f.read()).hexdigest() # create hash to find duplicate images
-            records.append({
-                'filepath': filepath,
-                'label': label,
-                'file_hash': file_hash
-            })
+        try:
+            with Image.open(img_path) as img:
+                img.load()  # check image is not corrupted
+        except Exception:
+            print("Cannot open:", img_path)
+            continue
+        records.append({
+            'filepath': f'{img_path.parent.name}/{img_path.name}',
+            'label': img_path.parent.name,
+            'file_hash': hashlib.md5(img_path.read_bytes()).hexdigest()
+        })
     data = pd.DataFrame(records)
     print("Total images:", len(data))
     return data
@@ -100,7 +77,6 @@ def remove_duplicates(data):
     print("Duplicates removed:", before - len(data))
     return data
 
-
 # 5. Split train, validation and test sets
 def split_data(data):
     train_data, temp_data = train_test_split(data, test_size=0.3, stratify=data['label'], random_state=SEED)
@@ -124,7 +100,6 @@ def save_splits(train_data, val_data, test_data):
         csv_path = folder / (name + '.csv')
         data.to_csv(csv_path, index=False)
 
-
 # 7. Run preprocessing
 def run_preprocessing():
     data = scan_images(DATA_DIR)
@@ -134,8 +109,7 @@ def run_preprocessing():
     train_data, val_data, test_data = split_data(data)
     save_splits(train_data, val_data, test_data)
 
-
-# 8. Calculate class weights
+# 6. Class weights
 def compute_class_weights():
     train_data = pd.read_csv(CSV_DIR / 'train' / 'train.csv')
     counts = train_data['label'].value_counts()
@@ -150,95 +124,52 @@ def compute_class_weights():
     return weights
 
 
-# 9. Resize image and add padding
-def resize_with_pad(image, size):
-    width, height = image.size
-    # New image size
-    scale = size / max(width, height)
-    new_width = round(width * scale)
-    new_height = round(height * scale)
-    image = image.resize((new_width, new_height), Image.BILINEAR)
-    # Create a black square background
-    new_image = Image.new('RGB', (size, size), (0, 0, 0))
-    # Put the image in the center
-    left = (size - new_width) // 2
-    top = (size - new_height) // 2
-    new_image.paste(image, (left, top))
-    return new_image
+# 7. Augmentation
+augmentation = transforms.Compose([
+    transforms.RandomHorizontalFlip(0.5),
+    transforms.RandomVerticalFlip(0.2),
+    transforms.RandomApply([transforms.RandomRotation(15)], p=0.5),
+    transforms.RandomApply([transforms.ColorJitter(brightness=0.15, contrast=0.15)], p=0.5),
+])
 
-
-# 10. Data augmentation
-def build_augmentation():
-    augmentation = transforms.Compose([
-        transforms.RandomHorizontalFlip(p=HFLIP_P),
-        transforms.RandomVerticalFlip(p=VFLIP_P),
-        transforms.RandomApply([
-            transforms.RandomRotation(
-                ROTATION_DEGREES,
-                interpolation=transforms.InterpolationMode.BILINEAR
-            )
-        ], p=ROTATION_P),
-        transforms.RandomApply([
-            transforms.ColorJitter(brightness=BRIGHTNESS_DELTA)
-        ], p=BRIGHTNESS_P),
-        transforms.RandomApply([
-            transforms.ColorJitter(contrast=CONTRAST_DELTA)
-        ], p=CONTRAST_P)
-    ])
-    return augmentation
-
-
-# 11. Create Dataset
 class GarbageDataset(Dataset):
-    def __init__(self, csv_path, img_size=IMG_SIZE, training=False):
+    def __init__(self, csv_path, training=False):
         data = pd.read_csv(csv_path)
         self.filepaths = data['filepath'].tolist()
-        self.labels = []
-        
-        for label in data['label']:
-            self.labels.append(CLASS_TO_INDEX[label])
-        self.img_size = img_size
+        self.labels = [CLASS_TO_INDEX[label] for label in data['label']]
         self.training = training
         self.to_tensor = transforms.ToTensor()
-        self.augmentation = build_augmentation()
+
     def __len__(self):
         return len(self.filepaths)
+
     def __getitem__(self, index):
-        # Load image
-        img_path = DATA_DIR / self.filepaths[index]
-        with Image.open(img_path) as img:
+        with Image.open(DATA_DIR / self.filepaths[index]) as img:
             image = img.convert('RGB')
-        # Resize image
-        image = resize_with_pad(image, self.img_size)
-        # Apply augmentation to training data only
+        # Resize keeping aspect ratio, pad with black to a square, method=Image.BILINEAR: cho ảnh mượt vừa phải, nhanh và chất lượng ổn
+        image = ImageOps.pad(image, (IMG_SIZE, IMG_SIZE), method=Image.BILINEAR, color=(0, 0, 0)) # 0 0 0 là màu nền lấp chỗ trống, màu đen
         if self.training:
-            image = self.augmentation(image)
-        # Convert image to tensor
-        image = self.to_tensor(image)
-        label = self.labels[index]
-        return image, label
+            image = augmentation(image)
+        return self.to_tensor(image), self.labels[index]
 
 
-# 12. Create DataLoaders
+# 7. DataLoaders
 def make_dataloaders():
-    train_data = GarbageDataset(CSV_DIR / 'train' / 'train.csv', training=True)
-    val_data = GarbageDataset(CSV_DIR / 'val' / 'val.csv')
-    test_data = GarbageDataset(CSV_DIR / 'test' / 'test.csv')
+    train = GarbageDataset(CSV_DIR / 'train' / 'train.csv', training=True)
+    val = GarbageDataset(CSV_DIR / 'val' / 'val.csv')
+    test = GarbageDataset(CSV_DIR / 'test' / 'test.csv')
+    return (
+        DataLoader(train, batch_size=BATCH_SIZE, shuffle=True),
+        DataLoader(val, batch_size=BATCH_SIZE),
+        DataLoader(test, batch_size=BATCH_SIZE),
+    )
 
-    train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=False)
-    test_loader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False)
-    return train_loader, val_loader, test_loader
 
-
-# 13. Run
+# 8. Run
 if __name__ == '__main__':
     run_preprocessing()
-    train_loader, val_loader, test_loader = make_dataloaders()
-    for name, loader in [('train', train_loader), ('val', val_loader), ('test', test_loader)]:
+    loaders = make_dataloaders()
+    for name, loader in zip(['train', 'val', 'test'], loaders):
         images, labels = next(iter(loader))
-        print(name)
-        print("Image shape:", images.shape)
-        print("Min pixel:", images.min().item())
-        print("Max pixel:", images.max().item())
+        print(name, "| shape:", images.shape, "| min:", images.min().item(), "| max:", images.max().item())
     print("Class weights:", compute_class_weights())
