@@ -88,9 +88,6 @@ def compute_class_weights(train_dataset, classes):
 
     for class_name in classes:
         count = counts[class_name]
-        if count == 0:
-            raise ValueError(f"No training samples for class: {class_name}")
-
         weight = total_samples / (num_classes * count)
         weights.append(weight)
 
