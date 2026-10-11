@@ -1,11 +1,12 @@
-﻿"""Fine-tune MobileNetV3-Large; chỉ in kết quả, không lưu log/checkpoint."""
+﻿
+"""Fine-tune MobileNetV3-Large; chỉ in kết quả, không lưu log/checkpoint."""
 
 import torch
 from torch import nn
 from torch.nn import functional as F
 from torchvision.models import MobileNet_V3_Large_Weights, mobilenet_v3_large
 
-from prepare_mobilenetv3 import prepare
+from prepare_mobilenetv3 import prepare, compute_class_weights
 
 
 # 1. Settings
@@ -100,7 +101,7 @@ class PartialMobileNet(nn.Module):
 
 
 # 4. Run one epoch
-def run_epoch(model, loader, device, optimizer=None, confusion=None):
+def run_epoch(model, loader, device, optimizer=None, confusion=None, class_weights=None):
     training = optimizer is not None
 
     model.train(training)
@@ -120,7 +121,7 @@ def run_epoch(model, loader, device, optimizer=None, confusion=None):
 
             outputs = model(images)
 
-            loss = F.cross_entropy(outputs, labels)
+            loss = F.cross_entropy(outputs, labels, weight=class_weights)
             loss += model.l1_penalty()
 
             if not torch.isfinite(loss):
@@ -161,6 +162,11 @@ def main():
 
     loaders, classes = prepare()
 
+    # Class weights tính từ training set
+    class_weights = compute_class_weights(
+        loaders["train"].dataset, classes
+    ).to(device)
+
     model = PartialMobileNet(
         num_classes=len(classes)
     ).to(device)
@@ -172,6 +178,7 @@ def main():
 
     print("Device:", device)
     print("Classes:", len(classes))
+    print("Class weights:", class_weights)
 
     best_loss = float("inf")
     stop_loss = float("inf")
@@ -186,7 +193,8 @@ def main():
             model,
             loaders["train"],
             device,
-            optimizer
+            optimizer,
+            class_weights=class_weights
         )
 
         val_loss, val_acc = run_epoch(
@@ -221,7 +229,6 @@ def main():
         if wait >= PATIENCE:
             print(f"Early stopping at epoch {epoch}.")
             break
-
 
     # 6. Test
     model.load_state_dict(best_state)

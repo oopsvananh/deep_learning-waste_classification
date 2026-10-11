@@ -1,20 +1,27 @@
-﻿"""Đọc CSV train/val/test và tạo DataLoader cho MobileNetV3."""
+﻿
+"""Đọc CSV train/val/test và tạo DataLoader cho MobileNetV3."""
 
 import csv
+from collections import Counter
 from pathlib import Path
 
+import torch
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+
 
 # 1. Settings
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
+SEED = 42
 
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
+
+torch.manual_seed(SEED)
 
 
 # 2. Dataset
@@ -54,9 +61,10 @@ class WasteDataset(Dataset):
         row = self.rows[index]
         image_path = self.image_dir / row["filepath"]
 
-        image = Image.open(image_path).convert("RGB")
-        image = self.transform(image)
+        with Image.open(image_path) as img:
+            image = img.convert("RGB")
 
+        image = self.transform(image)
         label = self.class_to_index[row["label"]]
 
         return image, label
@@ -68,7 +76,28 @@ def read_csv(file_path):
         return list(csv.DictReader(f))
 
 
-# 4. Prepare DataLoaders
+# 4. Calculate class weights
+def compute_class_weights(train_dataset, classes):
+    labels = [row["label"] for row in train_dataset.rows]
+    counts = Counter(labels)
+
+    total_samples = len(labels)
+    num_classes = len(classes)
+
+    weights = []
+
+    for class_name in classes:
+        count = counts[class_name]
+        if count == 0:
+            raise ValueError(f"No training samples for class: {class_name}")
+
+        weight = total_samples / (num_classes * count)
+        weights.append(weight)
+
+    return torch.tensor(weights, dtype=torch.float32)
+
+
+# 5. Prepare DataLoaders
 def prepare(data_dir=DATA_DIR, batch_size=BATCH_SIZE):
     data_dir = Path(data_dir)
     image_dir = data_dir / "raw" / "garbage_classification"
@@ -120,11 +149,16 @@ def prepare(data_dir=DATA_DIR, batch_size=BATCH_SIZE):
     return loaders, classes
 
 
-# 5. Check
+# 6. Check
 if __name__ == "__main__":
     loaders, classes = prepare()
+
+    class_weights = compute_class_weights(
+        loaders["train"].dataset, classes
+    )
 
     print("Classes:", classes)
     print("Train:", len(loaders["train"].dataset))
     print("Validation:", len(loaders["val"].dataset))
     print("Test:", len(loaders["test"].dataset))
+    print("Class weights:", class_weights)
