@@ -3,6 +3,7 @@
 # 1. Import thư viện
 # import json
 import sys
+import time
 from pathlib import Path
 
 # import pandas as pd
@@ -18,19 +19,19 @@ from torch import nn
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_DIR))
 
-from preprocess.preprocessing import CLASSES, compute_class_weights, make_dataloaders
+from preprocess.preprocessing import (
+    BATCH_SIZE,
+    CLASSES,
+    IMG_SIZE,
+    compute_class_weights,
+    make_dataloaders
+)
 
 
 # 2. Cấu hình huấn luyện
 EPOCHS = 200
-BATCH_SIZE = 32
 LEARNING_RATE = 1e-4
-IMAGE_SIZE = 224
-NUM_WORKERS = 2
-
-DATA_DIR = None  # Dùng đường dẫn mặc định trong preprocessing.py
-CSV_DIR = PROJECT_DIR / "data"
-# OUTPUT_DIR = PROJECT_DIR / "artifacts" / "complex_cnn"
+OUTPUT_DIR = PROJECT_DIR / "artifacts" / "complex_cnn"
 
 
 # 3. Các khối CNN
@@ -258,30 +259,23 @@ def classification_metrics(result):
 
 # 8. Nạp dữ liệu
 def main():
-    # OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"
     )
 
     print(f"Thiết bị: {device}")
-    print(f"Kích thước ảnh: {IMAGE_SIZE} | Batch size: {BATCH_SIZE}")
+    print(f"Kích thước ảnh: {IMG_SIZE} | Batch size: {BATCH_SIZE}")
 
     # Dùng các tập train/val/test đã chia sẵn trong CSV
-    train_loader, val_loader, test_loader = make_dataloaders(
-        img_size=IMAGE_SIZE,
-        batch_size=BATCH_SIZE,
-        num_workers=NUM_WORKERS,
-        data_dir=DATA_DIR,
-        csv_dir=CSV_DIR
-    )
+    train_loader, val_loader, test_loader = make_dataloaders()
 
     # 9. Khởi tạo model, loss và optimizer
     model = ComplexCNN(num_classes=len(CLASSES)).to(device)
 
     # Trọng số lớp để xử lý mất cân bằng số mẫu
-    train_csv = CSV_DIR / "train" / "train.csv"
-    class_weights = compute_class_weights(train_csv).to(device)
+    class_weights = compute_class_weights().to(device)
     loss_fn = nn.CrossEntropyLoss(weight=class_weights)
 
     optimizer = torch.optim.Adam(
@@ -301,12 +295,15 @@ def main():
     print(f"Số tham số: {parameter_count:,}")
 
     # 10. Huấn luyện
-    # checkpoint_path = OUTPUT_DIR / "best_model.pt"
+    checkpoint_path = OUTPUT_DIR / "best_model.pt"
     # history_path = OUTPUT_DIR / "training_history.csv"
 
     best_val_loss = float("inf")
+    best_epoch = 0
     best_state = None
     # history = []
+
+    training_start = time.perf_counter()
 
     for epoch in range(1, EPOCHS + 1):
 
@@ -342,17 +339,11 @@ def main():
         # Giữ model có validation loss thấp nhất trong RAM
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            best_epoch = epoch
             best_state = {
                 name: value.detach().cpu().clone()
                 for name, value in model.state_dict().items()
             }
-
-            # checkpoint = {
-            #     "epoch": epoch,
-            #     "val_loss": best_val_loss,
-            #     "model_state_dict": model.state_dict(),
-            # }
-            # torch.save(checkpoint, checkpoint_path)
 
         print(
             f"Epoch {epoch:03d}/{EPOCHS} | "
@@ -361,14 +352,20 @@ def main():
             f"val_loss {val_loss:.4f}"
         )
 
+    training_seconds = time.perf_counter() - training_start
+
     # 11. Test model tốt nhất
-    # checkpoint = torch.load(
-    #     checkpoint_path,
-    #     map_location=device,
-    #     weights_only=True
-    # )
-    # model.load_state_dict(checkpoint["model_state_dict"])
     model.load_state_dict(best_state)
+
+    # Lưu model tốt nhất để có thể nạp lại và predict mà không cần train lại
+    checkpoint = {
+        "epoch": best_epoch,
+        "val_loss": best_val_loss,
+        "model_state_dict": best_state,
+        "classes": CLASSES,
+        "image_size": IMG_SIZE
+    }
+    torch.save(checkpoint, checkpoint_path)
 
     final_test = evaluate(model, test_loader, loss_fn, device)
     final_metrics = classification_metrics(final_test)
@@ -409,13 +406,17 @@ def main():
     # matrix_table.to_csv(OUTPUT_DIR / "confusion_matrix.csv")
 
     # 13. In kết quả
-    # print("\nKết quả của model tốt nhất:")
-    # print("Epoch    :", checkpoint["epoch"])
+    hours, remaining_seconds = divmod(training_seconds, 3600)
+    minutes, seconds = divmod(remaining_seconds, 60)
+
+    print("\nKết quả của model tốt nhất:")
+    print("Epoch    :", best_epoch)
     print(f"Accuracy : {final_metrics['accuracy']:.2%}")
     print(f"Precision: {final_metrics['precision']:.2%}")
     print(f"Recall   : {final_metrics['recall']:.2%}")
     print(f"F1-score : {final_metrics['f1_score']:.2%}")
-    # print("Thư mục lưu:", OUTPUT_DIR)
+    print(f"Thời gian train: {int(hours):02d}:{int(minutes):02d}:{seconds:05.2f}")
+    print("Đã lưu model:", checkpoint_path)
 
 
 # Cần giữ khi chạy DataLoader nhiều worker trên Windows
