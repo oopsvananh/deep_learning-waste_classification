@@ -102,7 +102,7 @@ def save_splits(train_data, val_data, test_data):
 
 # 7. Run preprocessing
 def run_preprocessing():
-    data = scan_images(DATA_DIR)
+    data = scan_images()
     data = fix_labels(data)
     data = remove_duplicates(data)
     print(data['label'].value_counts())
@@ -146,8 +146,8 @@ class GarbageDataset(Dataset):
     def __getitem__(self, index):
         with Image.open(DATA_DIR / self.filepaths[index]) as img:
             image = img.convert('RGB')
-        # Resize keeping aspect ratio, pad with black to a square, method=Image.BILINEAR: cho ảnh mượt vừa phải, nhanh và chất lượng ổn
-        image = ImageOps.pad(image, (IMG_SIZE, IMG_SIZE), method=Image.BILINEAR, color=(0, 0, 0)) # 0 0 0 là màu nền lấp chỗ trống, màu đen
+        # Resize keeping aspect ratio, pad with black to a square
+        image = ImageOps.pad(image, (IMG_SIZE, IMG_SIZE), method=Image.BILINEAR, color=(0, 0, 0)) 
         if self.training:
             image = augmentation(image)
         return self.to_tensor(image), self.labels[index]
@@ -171,5 +171,8 @@ if __name__ == '__main__':
     loaders = make_dataloaders()
     for name, loader in zip(['train', 'val', 'test'], loaders):
         images, labels = next(iter(loader))
-        print(name, "| shape:", images.shape, "| min:", images.min().item(), "| max:", images.max().item())
+        print(name)
+        print("Image shape:", images.shape)
+        print("Min pixel:", images.min().item())
+        print("Max pixel:", images.max().item())
     print("Class weights:", compute_class_weights())
