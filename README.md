@@ -1,253 +1,167 @@
 # Waste Classification
 
-Phân loại rác với [Garbage Classification (12 classes)](https://www.kaggle.com/datasets/mostafaabla/garbage-classification) của Mostafa Mohamed, tổ chức cho 3 mô hình dùng chung dữ liệu và quy trình đánh giá.
+Bài tập phân loại ảnh rác thành 12 lớp bằng **Simple CNN**, **Complex CNN** và **MobileNetV3-Large fine-tuning**.
+
+Dữ liệu: [Garbage Classification trên Kaggle](https://www.kaggle.com/datasets/mostafaabla/garbage-classification). Ba model dùng cùng CSV chia tập; MobileNetV3 có cách chuẩn hóa và augmentation riêng.
+
+## Cấu trúc thư mục
 
 ```text
-deep_learning-waste_classification/
-├── data/
-│   ├── raw/
-│   │   ├── dataset_info.json        # Nguồn, checksum archive và số ảnh từng lớp
-│   │   └── garbage_classification/  # Dữ liệu gốc theo 12 class
-│   ├── processed/                   # Dữ liệu sau tiền xử lý
-│   ├── train/                       # Tập huấn luyện
-│   ├── val/                         # Tập validation
-│   └── test/                        # Tập kiểm thử cuối cùng
-├── preprocess/
-│   ├── EDA.ipynb                  # Khám phá dataset 12 lớp
-│   ├── Preprocessing.ipynb        # Chạy và minh họa tiền xử lý
-│   ├── preprocessing.py           # Chia dữ liệu và tạo PyTorch DataLoader
-│   └── show_batch.ipynb           # Xem một batch sau tiền xử lý
-├── train/                           # Code huấn luyện dùng chung
-├── val/                             # Code validation, chọn cấu hình/checkpoint
-├── test/                            # Code đánh giá cuối cùng
-└── models/
-    ├── model_1/                     # Kiến trúc và cấu hình mô hình 1
-    ├── model_2/                     # Kiến trúc và cấu hình mô hình 2
-    └── model_3/                     # Kiến trúc và cấu hình mô hình 3
+data/
+  raw/dataset_info.json
+  raw/garbage_classification/        # Ảnh gốc theo từng lớp
+  train/train.csv
+  val/val.csv
+  test/test.csv
+preprocess/
+  EDA.ipynb
+  preprocessing.py
+  show_after_preprocess.ipynb
+  show_samples.py
+models/
+  model_1/
+    simple.py
+    test.py
+  model_2/
+    train_complex_cnn.py
+    predict.py
+  model_3/
+    prepare_mobilenetv3.py
+    train_mobilenetv3.py
+    predict_mobilenetv3.py
+weights/
+  best_model1.pt
+  complex_cnn_best_epoch187.pth
+  best_mobilenetv3.pth
 ```
 
-## Cách sử dụng
+## Dữ liệu và tiền xử lý
 
-- Dữ liệu mới nằm trong `data/raw/garbage_classification/`, mỗi thư mục con là một nhãn. Ảnh đã giải nén được lưu trong Git; file ZIP được bỏ qua.
-- Mở `preprocess/EDA.ipynb`, chọn Python kernel và **Run All**. Notebook tự tìm dataset từ workspace hoặc repository.
-- EDA kiểm kê ảnh, đối chiếu metadata lúc tải, phân tích mất cân bằng lớp, ảnh mẫu, kích thước/định dạng, độ sáng/tương phản/chi tiết và ảnh trùng/gần trùng. Kết quả chỉ hiển thị trực tiếp trong notebook, không xuất file riêng.
-- Xem nhóm ảnh trùng/gần trùng trực tiếp bằng `REVIEW_START` và `REVIEW_LIMIT`; đặt `REVIEW_LIMIT = None` để xem tất cả. Nhóm pHash cần được kiểm tra thủ công.
-- Notebook EDA chỉ đọc ảnh gốc, không xóa/sửa nhãn hoặc chia dữ liệu.
-- Chạy `preprocess/Preprocessing.ipynb` để kiểm tra ảnh, sửa các nhãn đã xác nhận, loại ảnh trùng và tạo CSV cho train/validation/test.
-- Dùng cùng một cách chia dữ liệu cho cả 3 mô hình để so sánh kết quả. Chỉ áp dụng augmentation cho tập train; dùng validation để chọn mô hình và test để đánh giá cuối cùng.
-- Thay tên `model_1`, `model_2`, `model_3` khi chọn kiến trúc cụ thể; đặt phần định nghĩa và cấu hình riêng của từng mô hình trong thư mục tương ứng.
+Dataset gốc có 15.515 ảnh. Pipeline sửa ba nhãn đã xác định, loại ảnh trùng theo MD5 và chia tập bằng stratified sampling với seed 42. Việc sửa nhãn và loại ảnh trùng được thể hiện trong CSV, không sửa hoặc xóa ảnh gốc.
 
-Pipeline tiền xử lý PyTorch nằm trong `preprocess/preprocessing.py`. Complex CNN
-nằm trong `models/model_2/train_complex_cnn.py`. Dữ liệu sinh ra trong
-`processed/train/val/test` và kết quả trong `artifacts/` được bỏ qua bởi Git.
+| Tập | Số ảnh | Tỉ lệ |
+|---|---:|---:|
+| Train | 10.847 | 70% |
+| Validation | 2.324 | 15% |
+| Test | 2.325 | 15% |
+| Tổng sau làm sạch | 15.496 | 100% |
 
-## Thiết kế Complex CNN
+12 lớp: `battery`, `biological`, `brown-glass`, `cardboard`, `clothes`, `green-glass`, `metal`, `paper`, `plastic`, `shoes`, `trash`, `white-glass`.
 
-Complex CNN vẫn sử dụng các thành phần cơ bản đã có trong Simple CNN như
-`Conv2d`, `BatchNorm2d`, ReLU và `MaxPool2d`. Model chỉ dùng convolution thông
-thường. Stem có ba convolution `3x3`, `5x5` và `7x7` chạy song song; phần còn
-lại dùng kernel `3x3`. Model không dùng depthwise convolution, pointwise
-convolution hoặc convolution stride 2.
+- **Simple CNN và Complex CNN:** chuyển RGB, giữ tỉ lệ và thêm padding đen bằng `ImageOps.pad` để đạt 224 × 224, đưa pixel về [0, 1].
+- **MobileNetV3:** resize trực tiếp về 224 × 224, chuẩn hóa theo mean/std ImageNet.
+- Augmentation chỉ áp dụng cho train. Hai CNN dùng lật, xoay và chỉnh độ sáng/tương phản; MobileNetV3 dùng cấu hình riêng trong `prepare_mobilenetv3.py`, có thêm thay đổi tỉ lệ.
+- Class weights được tính từ nhãn train. Các CSV chia tập hiện được lưu trong Git.
 
-Mỗi residual block giữ nguyên kích thước đầu vào và đầu ra. Ở giữa block, số
-kênh được mở rộng gấp đôi để học thêm đặc trưng rồi thu nhỏ về số kênh ban đầu
-để cộng với input. MaxPooling tiếp tục đảm nhiệm việc giảm chiều cao và chiều
-rộng giữa các stage. Model có bốn stage và năm residual block, phân bố
-`1-1-2-1`. Cách phân bố này giữ stage thứ ba sâu hơn, bám theo tỉ lệ macro
-`3-3-9-3` của ConvNeXt nhưng được thu nhỏ để phù hợp bài tập. Số kênh tăng dần
-`16-32-64-128` để giữ model gọn hơn cho tập train 10,847 ảnh.
+Mở `preprocess/EDA.ipynb` để khám phá dữ liệu và `preprocess/show_after_preprocess.ipynb` để xem dữ liệu sau tiền xử lý. Nếu cần tạo lại ba CSV, chạy:
 
-Kiến trúc:
-
-```text
-Input 224x224x3
-
-  -> Parallel stem
-       Conv 3x3: 3 -> 6 -> BatchNorm -> ReLU
-       Conv 5x5: 3 -> 5 -> BatchNorm -> ReLU
-       Conv 7x7: 3 -> 5 -> BatchNorm -> ReLU
-       Concatenate channels: 6 + 5 + 5 = 16
-
-  -> Residual block 16
-       Conv 3x3: 16 -> 16  -> BatchNorm -> ReLU
-       Conv 3x3: 16 -> 32  -> BatchNorm -> ReLU
-       Conv 3x3: 32 -> 16  -> BatchNorm
-       Add input -> ReLU
-  -> MaxPooling
-
-  -> Conv 3x3: 16 -> 32 -> BatchNorm -> ReLU
-  -> Residual block 32
-       Conv 3x3: 32 -> 32  -> BatchNorm -> ReLU
-       Conv 3x3: 32 -> 64  -> BatchNorm -> ReLU
-       Conv 3x3: 64 -> 32  -> BatchNorm
-       Add input -> ReLU
-  -> MaxPooling
-
-  -> Conv 3x3: 32 -> 64 -> BatchNorm -> ReLU
-  -> Residual block 64 (lặp 2 lần)
-       Conv 3x3: 64  -> 64  -> BatchNorm -> ReLU
-       Conv 3x3: 64  -> 128 -> BatchNorm -> ReLU
-       Conv 3x3: 128 -> 64  -> BatchNorm
-       Add input -> ReLU
-  -> MaxPooling
-
-  -> Conv 3x3: 64 -> 128 -> BatchNorm -> ReLU
-  -> Residual block 128
-       Conv 3x3: 128 -> 128 -> BatchNorm -> ReLU
-       Conv 3x3: 128 -> 256 -> BatchNorm -> ReLU
-       Conv 3x3: 256 -> 128 -> BatchNorm
-       Add input -> ReLU
-
-  -> AdaptiveAvgPool2d
-  -> Linear 128 -> ReLU -> Dropout
-  -> Linear 12
+```powershell
+python preprocess/preprocessing.py
 ```
 
-Lớp cuối trả về 12 logits. Không đặt Softmax trong model vì
-`CrossEntropyLoss` của PyTorch đã xử lý logits trực tiếp; lớp có logit lớn nhất
-vẫn là dự đoán của model.
+Không cần tạo lại CSV chỉ để chạy predict.
 
-### Parallel stem
+## Cách chạy
 
-Ba convolution đầu tiên cùng nhận một ảnh. Kernel `3x3` tập trung vào chi tiết
-nhỏ, `5x5` nhìn vùng trung bình và `7x7` nhìn vùng rộng hơn. Mỗi nhánh dùng
-padding phù hợp nên đều trả về feature map `224x224`; model nối các nhánh theo
-chiều channels để tạo 16 channels cho stage đầu tiên.
+Chạy từ thư mục gốc repository, bằng môi trường Python có `torch`, `torchvision`, `scikit-learn`, `pandas` và `Pillow`. Notebook cần thêm các thư viện được import trong từng notebook.
 
-```python
-branch_3x3 = nn.Sequential(
-    nn.Conv2d(3, 6, kernel_size=3, padding=1, bias=False),
-    nn.BatchNorm2d(6),
-    nn.ReLU(),
-)
-branch_5x5 = nn.Sequential(
-    nn.Conv2d(3, 5, kernel_size=5, padding=2, bias=False),
-    nn.BatchNorm2d(5),
-    nn.ReLU(),
-)
-branch_7x7 = nn.Sequential(
-    nn.Conv2d(3, 5, kernel_size=7, padding=3, bias=False),
-    nn.BatchNorm2d(5),
-    nn.ReLU(),
-)
+Trên Windows, nếu chưa kích hoạt môi trường ảo, thay `python` bằng `.\.venv\Scripts\python.exe`. Các script tự chọn CUDA nếu khả dụng, nếu không dùng CPU.
 
-output = torch.cat(
-    [branch_3x3(x), branch_5x5(x), branch_7x7(x)],
-    dim=1,
-)
+### 1. Simple CNN
+
+```powershell
+python models/model_1/simple.py
 ```
 
-### Mở rộng và thu nhỏ số kênh
+Model gồm ba khối Conv–BN–ReLU, Max/Average Pooling, Global Average Pooling, Dropout 0.3 và lớp phân loại 12 lớp. Huấn luyện tối đa 50 epoch bằng AdamW, learning rate 0.001, weighted cross-entropy và label smoothing 0.1. Model được chọn theo validation accuracy; early stopping có patience 5.
 
-Ví dụ, block 32 kênh biến đổi `32 -> 64 -> 32`. Lớp giữa có nhiều kênh hơn để
-học các đặc trưng trung gian khác nhau. Lớp cuối thu nhỏ về 32 kênh để output có
-cùng shape với input. Hệ số mở rộng 2 lần giúp model có thêm kênh trung gian
-nhưng vẫn giữ số tham số và phép tính ở mức hợp lý.
+Script lưu `best_model1.pt` vào thư mục đang chạy, còn `test.py` đọc file tại `models/model_1/best_model1.pt`. Để đánh giá checkpoint có sẵn:
 
-### Residual connection
-
-Đầu ra của nhánh convolution được cộng với input ban đầu:
-
-```text
-output = input + transformed_input
+```powershell
+Copy-Item weights/best_model1.pt models/model_1/best_model1.pt
+python models/model_1/test.py
 ```
 
-Nhánh convolution học phần thông tin cần bổ sung, còn input có một đường truyền
-trực tiếp đến output. Hai tensor chỉ được cộng khi có cùng chiều cao, chiều rộng
-và số kênh; vì vậy mỗi block phải thu nhỏ về số kênh ban đầu trước phép cộng.
-Phép cộng được dùng thay cho concatenate để không làm tăng số kênh của output.
+Nếu đánh giá model vừa train từ thư mục gốc, dùng file `best_model1.pt` ở thư mục gốc làm nguồn sao chép. `test.py` in accuracy, weighted precision/recall/F1, macro F1 và classification report từng lớp.
 
-### Global average pooling
+### 2. Complex CNN
 
-Sau các khối convolution, dữ liệu có dạng `H x W x C`, trong đó `C` là số kênh
-đặc trưng. Global average pooling lấy trung bình toàn bộ `H x W` của từng kênh,
-biến mỗi kênh thành một con số:
-
-```text
-H x W x C -> 1 x 1 x C -> vector C phần tử
-```
-
-Ví dụ, đầu vào `28x28x128` sẽ trở thành vector có 128 phần tử. Mỗi phần tử tóm
-tắt mức độ xuất hiện của một đặc trưng trên toàn ảnh. Vector này được đưa vào
-lớp Linear để phân loại.
-
-Cách này tránh nối trực tiếp toàn bộ `28x28x128 = 100,352` giá trị vào classifier.
-Global average pooling chỉ tạo 128 giá trị, nên phần phân loại cần ít tham số
-hơn và giảm nguy cơ ghi nhớ quá chi tiết vị trí của ảnh train.
-
-Complex CNN được so sánh với Simple CNN trên cùng train/validation/test split,
-augmentation và class weight. Validation được dùng để chọn checkpoint; test
-không được dùng để chọn model.
-
-Code PyTorch để định nghĩa, huấn luyện và đánh giá model nằm tại
-`models/model_2/train_complex_cnn.py`. Chạy từ thư mục gốc của repository:
-
-```sh
+```powershell
 python models/model_2/train_complex_cnn.py
 ```
 
-Mỗi process dùng một GPU trong `CUDA_VISIBLE_DEVICES`; batch size mặc định của
-mỗi model là 32.
+Complex CNN có **1.282.532 tham số**, được huấn luyện từ đầu:
 
-Script lưu model tốt nhất, lịch sử train, classification report và confusion
-matrix vào `artifacts/complex_cnn/`.
-
-Mặc định model train đủ 200 epoch. Validation chạy sau mỗi epoch và chỉ
-`val_loss` được dùng để lưu `best_model.pt`. Test cũng được đo sau mỗi epoch và
-in bốn metric: Accuracy, Macro Precision, Macro Recall và Macro F1-score. Macro
-average tính mỗi lớp ngang nhau, phù hợp khi số ảnh giữa các lớp không cân bằng.
-Cuối cùng, checkpoint có validation loss thấp nhất được nạp lại để đánh giá
-test.
-
-Chạy từ thư mục gốc của repository, thay GPU `0` nếu cần:
-
-```sh
-CUDA_VISIBLE_DEVICES=0 python models/model_2/train_complex_cnn.py \
-  --epochs 200 --test-frequency 1 --batch-size 32 --image-size 224 \
-  --learning-rate 1e-4 \
-  --output-dir artifacts/complex_cnn
+```text
+RGB input: 3 × 224 × 224
+  → Ba nhánh Conv 3×3, 5×5, 7×7 + BN + ReLU
+  → Ghép 6 + 5 + 5 = 16 kênh
+  → Stage 1: 1 residual block, 16 kênh  → MaxPool → 112 × 112
+  → Stage 2: 1 residual block, 32 kênh  → MaxPool → 56 × 56
+  → Stage 3: 2 residual blocks, 64 kênh → MaxPool → 28 × 28
+  → Stage 4: 1 residual block, 128 kênh          → 28 × 28
+  → Global Average Pooling → Flatten
+  → Linear 128 → 128 → ReLU → Dropout 0.5 → Linear 128 → 12
 ```
 
-### Kết quả phiên bản stem 5x5 trước đó
+Stage 2–4 bắt đầu bằng Conv 3×3–BN–ReLU để tăng số kênh. Mỗi residual block dùng ba convolution 3×3 với số kênh `C → C → 2C → C`, giữ nguyên chiều cao và chiều rộng. Nhánh chính được cộng với đầu vào rồi qua ReLU. Lớp cuối trả về 12 logits; dự đoán là lớp có điểm cao nhất.
 
-Hai seed được train độc lập trong 200 epoch. Checkpoint tốt nhất được chọn chỉ
-bằng validation loss; test không được dùng để chọn model.
+| Cấu hình | Giá trị |
+|---|---|
+| Epoch / batch size | 200 / 32 |
+| Optimizer | Adam, learning rate ban đầu 1e-4 |
+| Loss | Weighted cross-entropy |
+| Scheduler | ReduceLROnPlateau theo validation loss; factor 0.5, patience 3, min LR 1e-6 |
+| Chọn model | Validation loss thấp nhất |
 
-| Seed | Best epoch | Test accuracy | Macro-F1 | Weighted-F1 |
-|---:|---:|---:|---:|---:|
-| 42 | 89 | 87.91% | 85.99% | 87.94% |
-| 43 | 191 | 86.32% | 83.95% | 86.30% |
+Cấu hình được đặt trực tiếp trong code, không dùng tham số dòng lệnh. Validation chạy sau mỗi epoch. Trạng thái tốt nhất được giữ trong RAM, khôi phục sau 200 epoch và đánh giá test **một lần**.
 
-Phiên bản cũ có `1,282,460` tham số. Kết quả seed 42 tại epoch 89 là kết quả chính vì
-checkpoint này có validation loss tốt nhất trong run seed 42 và đạt kết quả
-cao hơn seed 43 trên cả ba test metric.
+Script in accuracy, macro precision, macro recall, macro F1, confusion matrix dạng số và tên file ảnh sai đầu tiên của mỗi lớp kèm nhãn thật/dự đoán. Lớp không có lỗi sẽ không in ví dụ. Script **không lưu checkpoint, log hoặc ảnh**.
 
-### Kết quả Parallel stem hiện tại
+Để đánh giá checkpoint có sẵn mà không train lại:
 
-Parallel stem có `1,282,532` tham số và được train 200 epoch với seed 42, ảnh
-`224x224`, batch size 32 và learning rate `1e-4`. Checkpoint epoch 187 được chọn
-chỉ bằng validation loss, sau đó mới dùng để tính kết quả test chính thức.
+```powershell
+python models/model_2/predict.py
+```
 
-Lượt chạy chính thức được thực hiện trên node `viu1`, dùng một NVIDIA RTX A6000
-48 GB (GPU 3). CPU của node là 2 x Intel Xeon Gold 5320 2.20 GHz, tổng cộng 52
-cores/104 threads; DataLoader dùng 2 workers. Toàn bộ process, gồm khởi tạo,
-200 epoch, đánh giá checkpoint cuối và lưu kết quả, chạy từ
-`2026-10-06 22:31:59 EDT` đến `2026-10-07 00:26:16 EDT`: **1 giờ 54 phút 17
-giây** wall-clock.
+`predict.py` nạp `weights/complex_cnn_best_epoch187.pth`, hỗ trợ tên khối đặc trưng cũ `features` và tên mới `feature_extraction`. Script in bốn chỉ số tổng hợp; không in confusion matrix hoặc ví dụ sai.
 
-| Seed | Epoch được chọn | Test accuracy | Macro-F1 | Weighted-F1 |
-| ---: | ---: | ---: | ---: | ---: |
-| 42 | 187 | 87.18% | 85.25% | 87.19% |
+Kết quả đã kiểm tra với checkpoint epoch 187, 2.325 ảnh test và preprocessing hiện tại:
 
-Full training log gồm train, validation và test metrics của toàn bộ 200 epoch
-nằm tại `artifacts/logs/complex_cnn_parallel_stem_seed42.log`; phần đầu log ghi
-lại phần cứng và thời gian của run.
+| Accuracy | Macro Precision | Macro Recall | Macro F1 |
+|---:|---:|---:|---:|
+| 86.88% | 84.40% | 85.44% | 84.86% |
 
-## Nguồn và phạm vi sử dụng
+Các dòng `Precision`, `Recall` và `F1-score` của Complex CNN đều là macro average: mỗi lớp đóng góp ngang nhau. Khi đối chiếu kết quả, cần dùng cùng checkpoint, tập test và preprocessing.
 
-- Dataset: https://www.kaggle.com/datasets/mostafaabla/garbage-classification
-- Tác giả: Mostafa Mohamed. Ngày tải: 18/09/2026.
-- Nhãn lấy trực tiếp từ thư mục dataset: `battery`, `biological`, `brown-glass`, `cardboard`, `clothes`, `green-glass`, `metal`, `paper`, `plastic`, `shoes`, `trash`, `white-glass`.
-- Xem `data/raw/dataset_info.json` để biết số ảnh thực tế và SHA-256 của archive tải về. Dữ liệu raw chưa được loại ảnh trùng, sửa nhãn hoặc chia tập.
-- Kaggle ghi giấy phép: **Database: Open Database, Contents: © Original Authors**. Quyền đối với ảnh thuộc tác giả gốc; xem mô tả nguồn về sử dụng cho nghiên cứu và phi lợi nhuận.
-- Dữ liệu TrashNet cũ đã được thay thế trong phiên bản hiện tại; lịch sử Git vẫn giữ các phiên bản trước.
+### 3. MobileNetV3-Large fine-tuning
+
+```powershell
+python models/model_3/train_mobilenetv3.py
+```
+
+Model dùng trọng số ImageNet `IMAGENET1K_V1`, chỉ cập nhật năm lớp convolution cuối của backbone và classification head mới. BatchNorm trong backbone giữ nguyên running statistics. Head gồm GAP, Dropout 0.3, Linear 960 → 256, BatchNorm, ELU, Dropout 0.5 và Linear 256 → 12.
+
+Huấn luyện bằng Adam với learning rate 1e-4, tối đa 50 epoch. Train dùng weighted cross-entropy và L1 (1e-5) trên trọng số hai lớp Linear. Validation/test trong script train dùng cross-entropy không có class weights, cộng L1. Model được chọn theo validation loss thấp nhất; early stopping dùng patience 10 và min delta 1e-4.
+
+Script train giữ model tốt nhất trong RAM, đánh giá test ở cuối và in các chỉ số macro; không lưu checkpoint mới. Để đánh giá checkpoint có sẵn:
+
+```powershell
+python models/model_3/predict_mobilenetv3.py --test --weights weights/best_mobilenetv3.pth
+```
+
+Dự đoán một ảnh, thay đường dẫn ảnh cho phù hợp:
+
+```powershell
+python models/model_3/predict_mobilenetv3.py --image data/raw/garbage_classification/battery/battery1.jpg --weights weights/best_mobilenetv3.pth
+```
+
+## Đánh giá và so sánh
+
+Validation được dùng để chọn model; test được dùng cho đánh giá cuối cùng. Khi lập bảng so sánh, dùng accuracy và các chỉ số **macro** nhất quán giữa các model. Không lấy weighted precision/recall/F1 của Simple CNN thay cho macro.
+
+Ba model dùng cùng danh sách ảnh chia tập, nhưng khác kiến trúc, preprocessing và cách huấn luyện. Kết quả phản ánh toàn bộ cấu hình của từng model, không tách riêng tác dụng của từng thành phần.
+
+## Nguồn dữ liệu
+
+Nguồn dataset, ngày tải, số ảnh gốc theo lớp và SHA-256 của archive được lưu trong `data/raw/dataset_info.json`. Ảnh gốc được lưu trong Git; file ZIP và môi trường `.venv` được bỏ qua. Xem trang dataset để biết điều kiện sử dụng và quyền đối với ảnh.
