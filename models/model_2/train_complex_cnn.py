@@ -1,45 +1,21 @@
-# Chạy từ thư mục gốc: python models/model_2/train_complex_cnn.py
-
-# 1. Import thư viện
-# import json
 import sys
-import time
 from pathlib import Path
-
-# import pandas as pd
 import torch
-from sklearn.metrics import (
-    # classification_report,
-    # confusion_matrix,
-    precision_recall_fscore_support
-)
+from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import confusion_matrix
 from torch import nn
-
-
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_DIR))
-
-from preprocess.preprocessing import (
-    BATCH_SIZE,
-    CLASSES,
-    IMG_SIZE,
-    compute_class_weights,
-    make_dataloaders
-)
-
-
-# 2. Cấu hình huấn luyện
+from preprocess.preprocessing import (CLASSES,
+ compute_class_weights,make_dataloaders)
+# cấu hình
 EPOCHS = 200
 LEARNING_RATE = 1e-4
-OUTPUT_DIR = PROJECT_DIR / "artifacts" / "complex_cnn"
 
-
-# 3. Các khối CNN
 class ParallelStem(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # Ba nhánh tích chập, ghép thành 16 kênh
         self.branch_3x3 = nn.Sequential(
             nn.Conv2d(3, 6, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(6),
@@ -59,14 +35,13 @@ class ParallelStem(nn.Module):
         )
 
     def forward(self, x):
-        features = [
-            self.branch_3x3(x),
-            self.branch_5x5(x),
-            self.branch_7x7(x)
-        ]
+        features_3x3 = self.branch_3x3(x)
+        features_5x5 = self.branch_5x5(x)
+        features_7x7 = self.branch_7x7(x)
 
-        return torch.cat(features, dim=1)
-
+        features = [features_3x3, features_5x5, features_7x7]
+        output = torch.cat(features, dim=1)
+        return output
 
 class ResidualBlock(nn.Module):
     def __init__(self, channels):
@@ -74,7 +49,6 @@ class ResidualBlock(nn.Module):
 
         expanded_channels = channels * 2
 
-        # Giữ số kênh -> tăng gấp đôi -> giảm về số kênh ban đầu
         self.spatial = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(channels),
@@ -106,24 +80,24 @@ class ResidualBlock(nn.Module):
         x = self.expand(x)
         x = self.shrink(x)
 
-        # Cộng lại đầu vào của block
-        return self.output_relu(x + residual)
+        x = x + residual
+        x = self.output_relu(x)
+        return x
 
 
-# 4. Xây dựng mô hình
 class ComplexCNN(nn.Module):
     def __init__(self, num_classes=12):
         super().__init__()
 
-        self.features = nn.Sequential(
+        self.feature_extraction = nn.Sequential(
             # Đầu vào đa nhánh: 3 x 224 x 224 -> 16 x 224 x 224
             ParallelStem(),
 
-            # Stage 1: 16 x 224 x 224 -> 16 x 112 x 112
+            # 16 x 224 x 224 -> 16 x 112 x 112
             ResidualBlock(16),
             nn.MaxPool2d(kernel_size=2),
 
-            # Stage 2: 16 -> 32 kênh, kích thước 112 -> 56
+            # 16 -> 32 kênh, kích thước 112 -> 56
             nn.Sequential(
                 nn.Conv2d(16, 32, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(32),
@@ -132,7 +106,7 @@ class ComplexCNN(nn.Module):
             ResidualBlock(32),
             nn.MaxPool2d(kernel_size=2),
 
-            # Stage 3: 32 -> 64 kênh, kích thước 56 -> 28
+            # 32 -> 64 kênh, kích thước 56 -> 28
             nn.Sequential(
                 nn.Conv2d(32, 64, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(64),
@@ -142,7 +116,7 @@ class ComplexCNN(nn.Module):
             ResidualBlock(64),
             nn.MaxPool2d(kernel_size=2),
 
-            # Stage 4: 64 -> 128 kênh, kích thước giữ 28 x 28
+            # 64 -> 128 kênh, kích thước giữ 28 x 28
             nn.Sequential(
                 nn.Conv2d(64, 128, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(128),
@@ -151,7 +125,6 @@ class ComplexCNN(nn.Module):
             ResidualBlock(128)
         )
 
-        # Tổng hợp đặc trưng và phân loại
         self.classifier = nn.Sequential(
             nn.AdaptiveAvgPool2d(output_size=1),
             nn.Flatten(),
@@ -162,188 +135,187 @@ class ComplexCNN(nn.Module):
         )
 
     def forward(self, x):
-        x = self.features(x)
+        x = self.feature_extraction(x)
 
         return self.classifier(x)
 
 
-# 5. Huấn luyện một epoch
 def train_one_epoch(model, train_loader, loss_fn, optimizer, device):
     model.train()
 
-    train_loss_sum = 0.0
-    train_correct = 0
-    train_images = 0
+    total_loss, total_correct, total_images = 0.0, 0, 0
 
     for images, labels in train_loader:
-        images = images.to(device, non_blocking=True)
-        labels = labels.to(device, non_blocking=True)
+        images = images.to(device)
+        labels = labels.to(device)
 
         optimizer.zero_grad(set_to_none=True)
 
         outputs = model(images)
-        batch_loss = loss_fn(outputs, labels)
-
-        batch_loss.backward()
+        loss = loss_fn(outputs, labels)
+        loss.backward()
         optimizer.step()
 
-        predicted_labels = outputs.argmax(dim=1)
-        images_in_batch = labels.size(0)
+        predictions = outputs.argmax(dim=1)
+        correct_predictions = predictions == labels
+        correct_count = correct_predictions.sum().item()
 
-        # Cộng dồn loss và số ảnh dự đoán đúng
-        train_loss_sum += batch_loss.item() * images_in_batch
-        correct_in_batch = (predicted_labels == labels).sum().item()
-        train_correct += correct_in_batch
-        train_images += images_in_batch
+        batch_size = labels.size(0)
+        loss_value = loss.item()
 
-    train_loss = train_loss_sum / train_images
-    train_accuracy = train_correct / train_images
+        total_loss += loss_value * batch_size
+        total_correct += correct_count
+        total_images += batch_size
 
-    return train_loss, train_accuracy
+    average_loss = total_loss / total_images
+    accuracy = total_correct / total_images
+
+    return average_loss, accuracy
 
 
-# 6. Đánh giá validation và test
-@torch.no_grad()
 def evaluate(model, loader, loss_fn, device):
-    """Đánh giá model; không tính gradient và không cập nhật weights."""
-    model.eval()  # Tắt Dropout, dùng thống kê BatchNorm đã học
+    model.eval()
 
-    total_loss = 0.0
-    total_correct = 0
-    total_images = 0
-    all_labels = []
-    all_predictions = []
+    total_loss, total_correct, total_images = 0.0, 0, 0
 
-    for images, labels in loader:
-        images = images.to(device, non_blocking=True)
-        labels = labels.to(device, non_blocking=True)
+    all_labels, all_predictions = [], []
 
-        outputs = model(images)
-        batch_loss = loss_fn(outputs, labels)
-        predicted_labels = outputs.argmax(dim=1)
+    with torch.no_grad():
+        for images, labels in loader:
+            images = images.to(device)
+            labels = labels.to(device)
 
-        images_in_batch = labels.size(0)
-        total_loss += batch_loss.item() * images_in_batch
-        total_correct += (predicted_labels == labels).sum().item()
-        total_images += images_in_batch
+            outputs = model(images)
+            batch_loss = loss_fn(outputs, labels)
+            predictions = outputs.argmax(dim=1)
 
-        # Giữ nhãn để tính các chỉ số phân loại
-        all_labels.extend(labels.cpu().tolist())
-        all_predictions.extend(predicted_labels.cpu().tolist())
+            batch_size = labels.size(0)
+
+            for i in range(batch_size):
+                true_label = labels[i].item()
+                predicted_label = predictions[i].item()
+
+                if predicted_label == true_label:
+                    total_correct += 1
+
+            all_labels.append(labels)
+            all_predictions.append(predictions)
+
+            loss_value = batch_loss.item()
+            total_loss += loss_value * batch_size
+            total_images += batch_size
+
+    all_labels = torch.cat(all_labels)
+    all_predictions = torch.cat(all_predictions)
+
+    average_loss = total_loss / total_images
+    accuracy = total_correct / total_images
 
     return {
-        "loss": total_loss / total_images,
-        "accuracy": total_correct / total_images,
+        "loss": average_loss,
+        "accuracy": accuracy,
         "labels": all_labels,
         "predictions": all_predictions,
     }
 
 
-# 7. Tính các chỉ số phân loại
 def classification_metrics(result):
-    precision, recall, f1_score, _ = precision_recall_fscore_support(
-        result["labels"],
-        result["predictions"],
-        labels=list(range(len(CLASSES))),
-        average="macro",  # Mỗi lớp đóng góp ngang nhau
-        zero_division=0
+    labels = result["labels"].cpu()
+    predictions = result["predictions"].cpu()
+    classes = list(range(len(CLASSES)))
+
+    precision = precision_score(
+        labels, predictions,
+        labels=classes, average="macro", zero_division=0
+    )
+    recall = recall_score(
+        labels, predictions,
+        labels=classes, average="macro", zero_division=0
+    )
+    f1 = f1_score(
+        labels, predictions,
+        labels=classes, average="macro", zero_division=0
     )
 
     return {
         "accuracy": result["accuracy"],
         "precision": precision,
         "recall": recall,
-        "f1_score": f1_score,
+        "f1_score": f1,
     }
 
 
-# 8. Nạp dữ liệu
+def print_test_results(result, dataset):
+    labels = result["labels"].cpu()
+    predictions = result["predictions"].cpu()
+
+    matrix = confusion_matrix(labels, predictions, labels=list(range(len(CLASSES))))
+    print("\nConfusion matrix (rows: true, columns: predicted):")
+    print("Class order:", CLASSES)
+    print(matrix)
+
+    print("\n One wrong example for each true class")
+    for class_id in range(len(CLASSES)):
+        for i in range(len(labels)):
+            if labels[i].item() == class_id and predictions[i] != labels[i]:
+                predicted_class = CLASSES[predictions[i].item()]
+                print(dataset.filepaths[i])
+                print("True:", CLASSES[class_id], "| Predicted:", predicted_class)
+                break
+
+
 def main():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
 
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu"
-    )
-
-    print(f"Thiết bị: {device}")
-    print(f"Kích thước ảnh: {IMG_SIZE} | Batch size: {BATCH_SIZE}")
-
-    # Dùng các tập train/val/test đã chia sẵn trong CSV
     train_loader, val_loader, test_loader = make_dataloaders()
 
-    # 9. Khởi tạo model, loss và optimizer
-    model = ComplexCNN(num_classes=len(CLASSES)).to(device)
+    model = ComplexCNN(num_classes=len(CLASSES))
+    model = model.to(device)
 
-    # Trọng số lớp để xử lý mất cân bằng số mẫu
-    class_weights = compute_class_weights().to(device)
+    class_weights = compute_class_weights()
+    class_weights = class_weights.to(device)
     loss_fn = nn.CrossEntropyLoss(weight=class_weights)
 
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=LEARNING_RATE
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode="min",
         factor=0.5,
         patience=3,
-        min_lr=1e-6
+        min_lr=1e-6,
     )
 
-    parameter_count = sum(parameter.numel() for parameter in model.parameters())
+    parameter_count = 0
+    for parameter in model.parameters():
+        parameter_count += parameter.numel()
     print(f"Số tham số: {parameter_count:,}")
-
-    # 10. Huấn luyện
-    checkpoint_path = OUTPUT_DIR / "best_model.pt"
-    # history_path = OUTPUT_DIR / "training_history.csv"
 
     best_val_loss = float("inf")
     best_epoch = 0
     best_state = None
-    # history = []
-
-    training_start = time.perf_counter()
 
     for epoch in range(1, EPOCHS + 1):
-
         train_loss, train_accuracy = train_one_epoch(
-            model,
-            train_loader,
-            loss_fn,
-            optimizer,
-            device
+            model, train_loader, loss_fn, optimizer, device
         )
-
         val_result = evaluate(model, val_loader, loss_fn, device)
         val_loss = val_result["loss"]
         val_accuracy = val_result["accuracy"]
 
-        # Giảm learning rate khi validation loss không cải thiện
         scheduler.step(val_loss)
-        # current_learning_rate = optimizer.param_groups[0]["lr"]
 
-        # Lưu kết quả mỗi epoch
-        # epoch_result = {
-        #     "epoch": epoch,
-        #     "train_loss": train_loss,
-        #     "train_accuracy": train_accuracy,
-        #     "val_loss": val_loss,
-        #     "val_accuracy": val_accuracy,
-        #     "learning_rate": current_learning_rate,
-        # }
-        # history.append(epoch_result)
-        # history_table = pd.DataFrame(history)
-        # history_table.to_csv(history_path, index=False)
-
-        # Giữ model có validation loss thấp nhất trong RAM
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_epoch = epoch
-            best_state = {
-                name: value.detach().cpu().clone()
-                for name, value in model.state_dict().items()
-            }
+            best_state = {}
+            for name, value in model.state_dict().items():
+                saved_value = value.detach()
+                saved_value = saved_value.cpu()
+                best_state[name] = saved_value.clone()
 
         print(
             f"Epoch {epoch:03d}/{EPOCHS} | "
@@ -352,73 +324,18 @@ def main():
             f"val_loss {val_loss:.4f}"
         )
 
-    training_seconds = time.perf_counter() - training_start
-
-    # 11. Test model tốt nhất
     model.load_state_dict(best_state)
-
-    # Lưu model tốt nhất để có thể nạp lại và predict mà không cần train lại
-    checkpoint = {
-        "epoch": best_epoch,
-        "val_loss": best_val_loss,
-        "model_state_dict": best_state,
-        "classes": CLASSES,
-        "image_size": IMG_SIZE
-    }
-    torch.save(checkpoint, checkpoint_path)
 
     final_test = evaluate(model, test_loader, loss_fn, device)
     final_metrics = classification_metrics(final_test)
+    print_test_results(final_test, test_loader.dataset)
 
-    # true_labels = final_test["labels"]
-    # predicted_labels = final_test["predictions"]
-
-    # Báo cáo từng loại rác
-    # final_report = classification_report(
-    #     true_labels,
-    #     predicted_labels,
-    #     labels=list(range(len(CLASSES))),
-    #     target_names=CLASSES,
-    #     output_dict=True,
-    #     zero_division=0
-    # )
-
-    # 12. Lưu kết quả
-    # results = {
-    #     "best_epoch": checkpoint["epoch"],
-    #     "best_val_loss": checkpoint["val_loss"],
-    #     "accuracy": final_metrics["accuracy"],
-    #     "precision": final_metrics["precision"],
-    #     "recall": final_metrics["recall"],
-    #     "f1_score": final_metrics["f1_score"],
-    #     "classification_report": final_report,
-    # }
-    # with open(OUTPUT_DIR / "results.json", "w", encoding="utf-8") as file:
-    #     json.dump(results, file, indent=2)
-
-    # Ma trận nhầm lẫn: hàng là nhãn thật, cột là dự đoán
-    # matrix = confusion_matrix(
-    #     true_labels,
-    #     predicted_labels,
-    #     labels=list(range(len(CLASSES)))
-    # )
-    # matrix_table = pd.DataFrame(matrix, index=CLASSES, columns=CLASSES)
-    # matrix_table.to_csv(OUTPUT_DIR / "confusion_matrix.csv")
-
-    # 13. In kết quả
-    hours, remaining_seconds = divmod(training_seconds, 3600)
-    minutes, seconds = divmod(remaining_seconds, 60)
-
-    print("\nKết quả của model tốt nhất:")
+    print("\nKết quả model tốt nhất:")
     print("Epoch    :", best_epoch)
     print(f"Accuracy : {final_metrics['accuracy']:.2%}")
     print(f"Precision: {final_metrics['precision']:.2%}")
     print(f"Recall   : {final_metrics['recall']:.2%}")
     print(f"F1-score : {final_metrics['f1_score']:.2%}")
-    print(f"Thời gian train: {int(hours):02d}:{int(minutes):02d}:{seconds:05.2f}")
-    print("Đã lưu model:", checkpoint_path)
 
-
-# Cần giữ khi chạy DataLoader nhiều worker trên Windows
 if __name__ == "__main__":
     main()
