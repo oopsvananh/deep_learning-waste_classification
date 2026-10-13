@@ -1,13 +1,9 @@
-"""Đánh giá Complex CNN đã train trên toàn bộ tập test."""
-
 import sys
 from pathlib import Path
 
 import torch
 from torch import nn
 
-
-# Thêm thư mục gốc để Python tìm được model và preprocessing trên Windows.
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_DIR))
 
@@ -30,12 +26,12 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device:", device)
 
-    # Dataset đã được chia sẵn; script chỉ sử dụng tập test.
+
     _, _, test_loader = make_dataloaders()
 
     model = ComplexCNN(num_classes=len(CLASSES)).to(device)
     checkpoint = torch.load(CHECKPOINT_PATH, map_location=device)
-    # Support checkpoints saved with the old name "features".
+
     model_state = {}
     for name, value in checkpoint["model_state_dict"].items():
         if name.startswith("features."):
