@@ -35,7 +35,13 @@ def main():
 
     model = ComplexCNN(num_classes=len(CLASSES)).to(device)
     checkpoint = torch.load(CHECKPOINT_PATH, map_location=device)
-    model.load_state_dict(checkpoint["model_state_dict"])
+    # Support checkpoints saved with the old name "features".
+    model_state = {}
+    for name, value in checkpoint["model_state_dict"].items():
+        if name.startswith("features."):
+            name = name.replace("features.", "feature_extraction.", 1)
+        model_state[name] = value
+    model.load_state_dict(model_state)
 
     class_weights = compute_class_weights().to(device)
     loss_fn = nn.CrossEntropyLoss(weight=class_weights)
