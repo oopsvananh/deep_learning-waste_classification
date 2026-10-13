@@ -45,6 +45,7 @@ class PartialMobileNet(nn.Module):
         model = mobilenet_v3_large(weights=weights)
 
         self.backbone = model.features
+        # gọi toàn bộ từ đầu đến chỗ 960x7x7
 
         # Freeze toàn bộ backbone
         for param in self.backbone.parameters():
@@ -55,20 +56,26 @@ class PartialMobileNet(nn.Module):
             layer for layer in self.backbone.modules()
             if isinstance(layer, nn.Conv2d)
         ]
-
+        # backbone.children() => chỉ trả về block
+        # backbone.modules() => trả cả về block, cả về layers
         for layer in conv_layers[-5:]:
             for param in layer.parameters():
                 param.requires_grad = True
-
+        # tại sao chỉ fine tune 5 layers cuối (data ở mức trung bình; độ tương đồng cao với ImageNet)
+        # tại sao chọn MobileNetV3-Large (model tân tiến) (lý thuyết: model này sinh ra là để deployment vì nó nhanh và chính xác cao; thực nghiệm: thực nghiệm trên 13models, model này thỏa mãn các mục tiêu)
         in_features = model.classifier[0].in_features
+        # 960x7x7
 
         self.pool = nn.AdaptiveAvgPool2d(1)
+
+        # 960x1x1
 
         self.head = nn.Sequential(
             nn.Dropout(0.3),
             nn.Linear(in_features, 256),
             HeadBatchNorm(256),
             nn.ELU(),
+            # ELU thì cái phần > 0 nó giống ReLu, <=0 thì nó sẽ là 1 cái hàm mũ 
             nn.Dropout(0.5),
             nn.Linear(256, num_classes)
         )
@@ -80,14 +87,14 @@ class PartialMobileNet(nn.Module):
 
         # Không cập nhật BatchNorm statistics của backbone
         self.backbone.eval()
-
+        # Mình chỉ cập nhật ở các conv layers, nên nếu có batchnorm không cập nhật, giữ nguyên mean, STD ban đầu, không tính lại
         return self
 
     def forward(self, x):
-        x = self.backbone(x)
-        x = self.pool(x)
-        x = x.flatten(1)
-        x = self.head(x)
+        x = self.backbone(x)  # 960x7x7
+        x = self.pool(x)  # 960x1x1
+        x = x.flatten(1)  # 960
+        x = self.head(x)  # 12
 
         return x
 
@@ -120,12 +127,11 @@ def run_epoch(model, loader, device, optimizer=None, confusion=None, class_weigh
                 optimizer.zero_grad(set_to_none=True)
 
             outputs = model(images)
+            # Phương thức model (images) trả ra cái vector cỡ 12
 
             loss = F.cross_entropy(outputs, labels, weight=class_weights)
             loss += model.l1_penalty()
 
-            if not torch.isfinite(loss):
-                raise RuntimeError("Loss is not finite.")
 
             if training:
                 loss.backward()
@@ -145,6 +151,7 @@ def run_epoch(model, loader, device, optimizer=None, confusion=None, class_weigh
                     (labels * num_classes + predictions).cpu(),
                     minlength=num_classes ** 2
                 ).reshape(num_classes, num_classes)
+            # ban đầu làm việc trên vector, sau đó reshape thành ma trận confusion => count từng batch một => xếp theo thứ tự tương ứng => trải thành ma trânj
 
     loss = total_loss / total
     accuracy = correct / total
@@ -154,7 +161,6 @@ def run_epoch(model, loader, device, optimizer=None, confusion=None, class_weigh
 
 # 5. Train
 def main():
-    torch.manual_seed(42)
 
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"
@@ -172,7 +178,7 @@ def main():
     ).to(device)
 
     optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()),
+        filter(lambda p: p.requires_grad, model.parameters()), # Adam chỉ làm việc với các trọng số được cập nhật
         lr=LR
     )
 

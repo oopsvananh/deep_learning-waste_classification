@@ -16,18 +16,16 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
-SEED = 42
 
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
-
-torch.manual_seed(SEED)
 
 
 # 2. Dataset
 class WasteDataset(Dataset):
     def __init__(self, rows, image_dir, class_to_index, training=False):
-        self.rows = rows
+        self.rows = rows 
+        # {"filepath": "train/0/0001.jpg", "label": "cardboard"} for row in rows
         self.image_dir = image_dir
         self.class_to_index = class_to_index
 
