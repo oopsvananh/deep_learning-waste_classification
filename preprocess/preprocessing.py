@@ -32,26 +32,21 @@ CSV_DIR = project_dir / 'data'
 
 torch.manual_seed(SEED)
 
-
-# 2. Read image information (filepath, label, hash)
+# 2. Read image information
 def scan_images():
     records = []
-    for img_path in sorted(DATA_DIR.glob('*/*')):
-        if img_path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
+
+    for image_path in sorted(DATA_DIR.glob('*/*')):
+        if image_path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
             continue
-        try:
-            with Image.open(img_path) as img:
-                img.load()  # check image is not corrupted
-        except Exception:
-            print("Cannot open:", img_path)
-            continue
+        image_hash = hashlib.md5(image_path.read_bytes()).hexdigest()
         records.append({
-            'filepath': f'{img_path.parent.name}/{img_path.name}',
-            'label': img_path.parent.name,
-            'file_hash': hashlib.md5(img_path.read_bytes()).hexdigest()
+            'filepath': image_path.parent.name + '/' + image_path.name,
+            'label': image_path.parent.name,
+            'file_hash': image_hash
         })
     data = pd.DataFrame(records)
-    print("Total images:", len(data))
+    print('Total images:', len(data))
     return data
 
 
@@ -64,13 +59,12 @@ def fix_labels(data):
 
 # 4. Remove duplicate images
 def remove_duplicates(data):
-    # Check duplicate images with different labels
     for file_hash, group in data.groupby('file_hash'):
         labels = group['label'].unique()
         if len(labels) > 1:
             print(group[['filepath', 'label']])
             raise ValueError("Duplicate images have different labels")
-    # Remove duplicates
+
     before = len(data)
     data = data.drop_duplicates(subset='file_hash', keep='first')
     data = data.reset_index(drop=True)
@@ -81,6 +75,7 @@ def remove_duplicates(data):
 def split_data(data):
     train_data, temp_data = train_test_split(data, test_size=0.3, stratify=data['label'], random_state=SEED)
     val_data, test_data = train_test_split(temp_data, test_size=0.5, stratify=temp_data['label'], random_state=SEED)
+    
     print("Train set:", len(train_data))
     print("Validation set:", len(val_data))
     print("Test set:", len(test_data))
@@ -105,11 +100,12 @@ def run_preprocessing():
     data = scan_images()
     data = fix_labels(data)
     data = remove_duplicates(data)
+    
     print(data['label'].value_counts())
     train_data, val_data, test_data = split_data(data)
     save_splits(train_data, val_data, test_data)
 
-# 6. Class weights
+# 8. Class weights
 def compute_class_weights():
     train_data = pd.read_csv(CSV_DIR / 'train' / 'train.csv')
     counts = train_data['label'].value_counts()
@@ -124,7 +120,7 @@ def compute_class_weights():
     return weights
 
 
-# 7. Augmentation
+# 9. Data Augmentation
 augmentation = transforms.Compose([
     transforms.RandomHorizontalFlip(0.5),
     transforms.RandomVerticalFlip(0.2),
@@ -132,6 +128,7 @@ augmentation = transforms.Compose([
     transforms.RandomApply([transforms.ColorJitter(brightness=0.15, contrast=0.15)], p=0.5),
 ])
 
+# 10. Load images
 class GarbageDataset(Dataset):
     def __init__(self, csv_path, training=False):
         data = pd.read_csv(csv_path)
@@ -153,23 +150,24 @@ class GarbageDataset(Dataset):
         return self.to_tensor(image), self.labels[index]
 
 
-# 7. DataLoaders
+# 11. DataLoaders
 def make_dataloaders():
     train = GarbageDataset(CSV_DIR / 'train' / 'train.csv', training=True)
     val = GarbageDataset(CSV_DIR / 'val' / 'val.csv')
     test = GarbageDataset(CSV_DIR / 'test' / 'test.csv')
-    return (
-        DataLoader(train, batch_size=BATCH_SIZE, shuffle=True),
-        DataLoader(val, batch_size=BATCH_SIZE),
-        DataLoader(test, batch_size=BATCH_SIZE),
-    )
+    
+    train_loader = DataLoader(train, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val, batch_size=BATCH_SIZE)
+    test_loader = DataLoader(test, batch_size=BATCH_SIZE)
 
+    return train_loader, val_loader, test_loader
 
-# 8. Run
+# 12. Run
 if __name__ == '__main__':
     run_preprocessing()
-    loaders = make_dataloaders()
-    for name, loader in zip(['train', 'val', 'test'], loaders):
+    train_loader, val_loader, test_loader = make_dataloaders()
+    
+    for name, loader in [('train', train_loader), ('val', val_loader), ('test', test_loader)]:
         images, labels = next(iter(loader))
         print(name)
         print("Image shape:", images.shape)
