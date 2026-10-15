@@ -1,8 +1,8 @@
 import sys
+from copy import deepcopy
 from pathlib import Path
 import torch
 from sklearn.metrics import precision_score, recall_score, f1_score
-from sklearn.metrics import confusion_matrix
 from torch import nn
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_DIR))
@@ -157,20 +157,13 @@ def train_one_epoch(model, train_loader, loss_fn, optimizer, device):
         optimizer.step()
 
         predictions = outputs.argmax(dim=1)
-        correct_predictions = predictions == labels
-        correct_count = correct_predictions.sum().item()
-
         batch_size = labels.size(0)
-        loss_value = loss.item()
 
-        total_loss += loss_value * batch_size
-        total_correct += correct_count
+        total_loss += loss.item() * batch_size
+        total_correct += (predictions == labels).sum().item()
         total_images += batch_size
 
-    average_loss = total_loss / total_images
-    accuracy = total_correct / total_images
-
-    return average_loss, accuracy
+    return total_loss / total_images, total_correct / total_images
 
 
 def evaluate(model, loader, loss_fn, device):
@@ -186,83 +179,53 @@ def evaluate(model, loader, loss_fn, device):
             labels = labels.to(device)
 
             outputs = model(images)
-            batch_loss = loss_fn(outputs, labels)
+            loss = loss_fn(outputs, labels)
             predictions = outputs.argmax(dim=1)
-
             batch_size = labels.size(0)
 
-            for i in range(batch_size):
-                true_label = labels[i].item()
-                predicted_label = predictions[i].item()
+            total_loss += loss.item() * batch_size
+            total_correct += (predictions == labels).sum().item()
+            total_images += batch_size
 
-                if predicted_label == true_label:
-                    total_correct += 1
-
+            # Gom nhãn thật và dự đoán của các batch để tính metrics toàn tập.
             all_labels.append(labels)
             all_predictions.append(predictions)
 
-            loss_value = batch_loss.item()
-            total_loss += loss_value * batch_size
-            total_images += batch_size
-
-    all_labels = torch.cat(all_labels)
-    all_predictions = torch.cat(all_predictions)
-
-    average_loss = total_loss / total_images
-    accuracy = total_correct / total_images
-
     return {
-        "loss": average_loss,
-        "accuracy": accuracy,
-        "labels": all_labels,
-        "predictions": all_predictions,
+        "loss": total_loss / total_images,
+        "accuracy": total_correct / total_images,
+        "labels": torch.cat(all_labels),
+        "predictions": torch.cat(all_predictions),
     }
 
 
 def classification_metrics(result):
-    labels = result["labels"].cpu()
+    # Chuyển nhãn thật và nhãn dự đoán về CPU để dùng sklearn.
+    true_labels = result["labels"].cpu()
     predictions = result["predictions"].cpu()
-    classes = list(range(len(CLASSES)))
+    class_ids = list(range(len(CLASSES)))  # 12 lớp có chỉ số từ 0 đến 11.
+
+    accuracy = result["accuracy"]
 
     precision = precision_score(
-        labels, predictions,
-        labels=classes, average="macro", zero_division=0
+        true_labels, predictions,
+        labels=class_ids, average="macro", zero_division=0
     )
     recall = recall_score(
-        labels, predictions,
-        labels=classes, average="macro", zero_division=0
+        true_labels, predictions,
+        labels=class_ids, average="macro", zero_division=0
     )
     f1 = f1_score(
-        labels, predictions,
-        labels=classes, average="macro", zero_division=0
+        true_labels, predictions,
+        labels=class_ids, average="macro", zero_division=0
     )
 
     return {
-        "accuracy": result["accuracy"],
+        "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
         "f1_score": f1,
     }
-
-
-def print_test_results(result, dataset):
-    labels = result["labels"].cpu()
-    predictions = result["predictions"].cpu()
-
-    matrix = confusion_matrix(labels, predictions, labels=list(range(len(CLASSES))))
-    print("\nConfusion matrix (rows: true, columns: predicted):")
-    print("Class order:", CLASSES)
-    print(matrix)
-
-    print("\n One wrong example for each true class")
-    for class_id in range(len(CLASSES)):
-        for i in range(len(labels)):
-            if labels[i].item() == class_id and predictions[i] != labels[i]:
-                predicted_class = CLASSES[predictions[i].item()]
-                print(dataset.filepaths[i])
-                print("True:", CLASSES[class_id], "| Predicted:", predicted_class)
-                break
-
 
 def main():
     if torch.cuda.is_available():
@@ -296,7 +259,7 @@ def main():
 
     best_val_loss = float("inf")
     best_epoch = 0
-    best_state = None
+    best_state = None  # Bản sao trạng thái model có validation loss thấp nhất.
 
     for epoch in range(1, EPOCHS + 1):
         train_loss, train_accuracy = train_one_epoch(
@@ -311,11 +274,8 @@ def main():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_epoch = epoch
-            best_state = {}
-            for name, value in model.state_dict().items():
-                saved_value = value.detach()
-                saved_value = saved_value.cpu()
-                best_state[name] = saved_value.clone()
+            # Sao chép độc lập để train tiếp không làm thay đổi bản tốt nhất.
+            best_state = deepcopy(model.state_dict())
 
         print(
             f"Epoch {epoch:03d}/{EPOCHS} | "
@@ -324,11 +284,11 @@ def main():
             f"val_loss {val_loss:.4f}"
         )
 
+    # Khôi phục model tốt nhất trước khi đánh giá tập test.
     model.load_state_dict(best_state)
 
     final_test = evaluate(model, test_loader, loss_fn, device)
     final_metrics = classification_metrics(final_test)
-    print_test_results(final_test, test_loader.dataset)
 
     print("\nKết quả model tốt nhất:")
     print("Epoch    :", best_epoch)
